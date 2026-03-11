@@ -93,6 +93,7 @@
     "aiAnalysis": "Analyse IA",
     "scanAgain": "Scanner à nouveau",
     "changePhoto": "Changer de photo",
+    "todayMeals": "Repas du jour",
     "favorites": "Mes favoris",
     "noFavorites": "Aucun favori enregistré",
     "portionGrams": "Quantité",
@@ -128,7 +129,10 @@
     "protein": "prot.",
     "carbs": "gluc.",
     "fat": "lip.",
-    "fiber": "fibres",
+    "fiber": "Fibres",
+    "sugar": "Sucres",
+    "saturatedFat": "Acides gras saturés",
+    "salt": "Sel",
     "total": "Total",
     "g": "g"
   },
@@ -202,6 +206,27 @@
     "dinner": "Dîner",
     "uncategorized": "Autres"
   },
+  "healthGoal": {
+    "label": "Objectif santé",
+    "subtitle": "Adapte la note de santé de chaque repas à ton objectif",
+    "muscle": "Musculation",
+    "muscleDesc": "Priorité aux protéines et aux calories",
+    "healthy": "Alimentation saine",
+    "healthyDesc": "Équilibre, fibres, peu de sucre et sel",
+    "weightloss": "Perte de poids",
+    "weightlossDesc": "Faible en calories, riche en protéines",
+    "performance": "Performance sportive",
+    "performanceDesc": "Glucides et énergie en priorité",
+    "balance": "Équilibre général",
+    "balanceDesc": "Modération sur tous les nutriments",
+    "save": "Enregistrer l'objectif"
+  },
+  "healthLabel": {
+    "excellent": "Excellent",
+    "good": "Bon",
+    "limit": "À limiter",
+    "avoid": "À éviter"
+  },
   "settings": {
     "title": "Paramètres",
     "goalsTitle": "Objectifs quotidiens",
@@ -210,6 +235,7 @@
     "proteinGoal": "Protéines (g)",
     "carbsGoal": "Glucides (g)",
     "fatGoal": "Lipides (g)",
+    "fiberGoal": "Fibres (g)",
     "aiTitle": "Fournisseur IA",
     "aiSubtitle": "Configurez votre modèle d'IA pour l'analyse des repas",
     "provider": "Fournisseur",

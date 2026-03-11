@@ -9,6 +9,9 @@ export interface MealItem {
   carbs: number
   fat: number
   fiber?: number
+  sugar?: number
+  saturatedFat?: number
+  salt?: number
 }
 
 export const users = pgTable('users', {
@@ -30,6 +33,13 @@ export const meals = pgTable('meals', {
   totalProtein: real('total_protein').notNull(),
   totalCarbs: real('total_carbs').notNull(),
   totalFat: real('total_fat').notNull(),
+  totalFiber: real('total_fiber').default(0),
+  totalSugar: real('total_sugar').default(0),
+  totalSaturatedFat: real('total_saturated_fat').default(0),
+  totalSalt: real('total_salt').default(0),
+  nutriScore: text('nutri_score', { enum: ['A', 'B', 'C', 'D', 'E'] }),
+  healthScore: integer('health_score'),
+  healthLabel: text('health_label', { enum: ['excellent', 'good', 'limit', 'avoid'] }),
   confidence: real('confidence').default(1),
   source: text('source'),
   createdAt: timestamp('created_at').defaultNow().notNull()
@@ -44,6 +54,8 @@ export const userGoals = pgTable('user_goals', {
   protein: integer('protein').notNull().default(150),
   carbs: integer('carbs').notNull().default(250),
   fat: integer('fat').notNull().default(70),
+  fiber: integer('fiber').notNull().default(25),
+  healthGoal: text('health_goal', { enum: ['muscle', 'healthy', 'weightloss', 'performance', 'balance'] }).notNull().default('balance'),
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 })
 
@@ -56,17 +68,41 @@ export const aiSettings = pgTable('ai_settings', {
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 })
 
-export const favoriteMeals = pgTable('favorite_meals', {
+export const userFavoriteProducts = pgTable('user_favorite_products', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  productId: uuid('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, t => [
+  index('user_fav_products_user_idx').on(t.userId)
+])
+
+export const products = pgTable('products', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
-  items: jsonb('items').notNull().$type<MealItem[]>(),
-  totalCalories: real('total_calories').notNull(),
-  totalProtein: real('total_protein').notNull(),
-  totalCarbs: real('total_carbs').notNull(),
-  totalFat: real('total_fat').notNull(),
+  slug: text('slug').notNull(),
+  barcode: text('barcode'),
+  brand: text('brand'),
+  image: text('image'),
+  source: text('source', { enum: ['barcode', 'search', 'ai', 'photo'] }).notNull().default('ai'),
+  servingSize: text('serving_size'),
+  calories: real('calories').notNull(),
+  protein: real('protein').notNull(),
+  carbs: real('carbs').notNull(),
+  fat: real('fat').notNull(),
+  fiber: real('fiber'),
+  sugar: real('sugar'),
+  saturatedFat: real('saturated_fat'),
+  salt: real('salt'),
+  nutriScore: text('nutri_score', { enum: ['A', 'B', 'C', 'D', 'E'] }),
   createdAt: timestamp('created_at').defaultNow().notNull()
-})
+}, t => [
+  index('products_user_idx').on(t.userId),
+  index('products_barcode_idx').on(t.barcode),
+  index('products_user_slug_idx').on(t.userId, t.slug)
+])
 
 export const weightEntries = pgTable('weight_entries', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -153,16 +189,21 @@ export const weightEntriesRelations = relations(weightEntries, ({ one }) => ({
   user: one(users, { fields: [weightEntries.userId], references: [users.id] })
 }))
 
+export const productsRelations = relations(products, ({ one }) => ({
+  user: one(users, { fields: [products.userId], references: [users.id] })
+}))
+
 export const usersRelations = relations(users, ({ many, one }) => ({
   meals: many(meals),
   goals: one(userGoals),
   aiSettings: one(aiSettings),
-  favoriteMeals: many(favoriteMeals),
+  favoriteProducts: many(userFavoriteProducts),
   weightEntries: many(weightEntries),
   apiKeys: many(userApiKeys),
   oauthAccessTokens: many(oauthAccessTokens),
   oauthRefreshTokens: many(oauthRefreshTokens),
-  mcpSessions: many(mcpSessions)
+  mcpSessions: many(mcpSessions),
+  products: many(products)
 }))
 
 export const mealsRelations = relations(meals, ({ one }) => ({
@@ -177,8 +218,9 @@ export const aiSettingsRelations = relations(aiSettings, ({ one }) => ({
   user: one(users, { fields: [aiSettings.userId], references: [users.id] })
 }))
 
-export const favoriteMealsRelations = relations(favoriteMeals, ({ one }) => ({
-  user: one(users, { fields: [favoriteMeals.userId], references: [users.id] })
+export const userFavoriteProductsRelations = relations(userFavoriteProducts, ({ one }) => ({
+  user: one(users, { fields: [userFavoriteProducts.userId], references: [users.id] }),
+  product: one(products, { fields: [userFavoriteProducts.productId], references: [products.id] })
 }))
 
 export const userApiKeysRelations = relations(userApiKeys, ({ one }) => ({

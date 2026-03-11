@@ -7,7 +7,7 @@ const { t } = useI18n()
 const videoRef = ref<HTMLVideoElement>()
 const scanning = ref(false)
 const scannedCode = ref<string | null>(null)
-const result = ref<(NutritionResult & { productName?: string, brand?: string, image?: string }) | null>(null)
+const result = ref<NutritionResult | null>(null)
 const error = ref('')
 const loading = ref(false)
 

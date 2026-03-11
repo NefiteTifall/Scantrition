@@ -2,7 +2,7 @@
 import type { NutritionResult, MealItem } from '~/types/nutrition'
 
 const props = defineProps<{
-  result: NutritionResult & { productName?: string, brand?: string, image?: string }
+  result: NutritionResult
   loading?: boolean
 }>()
 
@@ -20,7 +20,7 @@ const multiplier = computed(() =>
   isBarcode.value ? portionGrams.value / 100 : portionMultiplier.value
 )
 
-const scaledResult = computed<NutritionResult & { productName?: string, brand?: string, image?: string }>(() => {
+const scaledResult = computed<NutritionResult>(() => {
   const m = multiplier.value
   return {
     ...props.result,
@@ -48,15 +48,26 @@ async function saveAsFavorite() {
   savingFavorite.value = true
   try {
     const r = scaledResult.value
+    const item = r.items[0]
     await $fetch('/api/favorites', {
       method: 'POST',
       body: {
         name: favoriteName.value || r.items.map((i: MealItem) => i.name).join(', '),
-        items: r.items,
-        totalCalories: r.totalCalories,
-        totalProtein: r.totalProtein,
-        totalCarbs: r.totalCarbs,
-        totalFat: r.totalFat
+        productId: item?.productId ?? null,
+        productName: r.productName ?? item?.name,
+        barcode: r.barcode ?? null,
+        brand: r.brand ?? null,
+        image: r.image ?? null,
+        servingSize: item?.quantity ?? null,
+        calories: r.totalCalories,
+        protein: r.totalProtein,
+        carbs: r.totalCarbs,
+        fat: r.totalFat,
+        fiber: r.totalFiber ?? null,
+        sugar: r.totalSugar ?? null,
+        saturatedFat: r.totalSaturatedFat ?? null,
+        salt: r.totalSalt ?? null,
+        nutriScore: r.nutriScore ?? null
       }
     })
     toast.add({ title: t('favorites.saved'), color: 'success', icon: 'i-lucide-heart' })

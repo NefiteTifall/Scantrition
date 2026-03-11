@@ -15,19 +15,43 @@ const goals = reactive({
   calories: goalsData.value?.calories ?? 2000,
   protein: goalsData.value?.protein ?? 150,
   carbs: goalsData.value?.carbs ?? 250,
-  fat: goalsData.value?.fat ?? 70
+  fat: goalsData.value?.fat ?? 70,
+  fiber: goalsData.value?.fiber ?? 25
 })
 const savingGoals = ref(false)
+
+const healthGoal = ref<string>(goalsData.value?.healthGoal ?? 'balance')
+const savingHealthGoal = ref(false)
+
+const healthGoals = [
+  { key: 'muscle', icon: 'i-lucide-dumbbell' },
+  { key: 'healthy', icon: 'i-lucide-leaf' },
+  { key: 'weightloss', icon: 'i-lucide-scale' },
+  { key: 'performance', icon: 'i-lucide-zap' },
+  { key: 'balance', icon: 'i-lucide-circle-dot' }
+]
 
 async function saveGoals(_event: FormSubmitEvent<typeof goals>) {
   savingGoals.value = true
   try {
-    await $fetch('/api/goals', { method: 'PUT', body: goals })
+    await $fetch('/api/goals', { method: 'PUT', body: { ...goals, healthGoal: healthGoal.value } })
     toast.add({ title: t('settings.saved'), color: 'success', icon: 'i-lucide-check-circle' })
   } catch {
     toast.add({ title: t('common.error'), color: 'error' })
   } finally {
     savingGoals.value = false
+  }
+}
+
+async function saveHealthGoal() {
+  savingHealthGoal.value = true
+  try {
+    await $fetch('/api/goals', { method: 'PUT', body: { healthGoal: healthGoal.value } })
+    toast.add({ title: t('settings.saved'), color: 'success', icon: 'i-lucide-check-circle' })
+  } catch {
+    toast.add({ title: t('common.error'), color: 'error' })
+  } finally {
+    savingHealthGoal.value = false
   }
 }
 
@@ -301,6 +325,18 @@ const mcpConfig = computed(() => JSON.stringify({
               class="w-full"
             />
           </UFormField>
+          <UFormField
+            :label="t('settings.fiberGoal')"
+            name="fiber"
+          >
+            <UInput
+              v-model.number="goals.fiber"
+              type="number"
+              min="0"
+              max="100"
+              class="w-full"
+            />
+          </UFormField>
         </div>
 
         <UButton
@@ -312,6 +348,55 @@ const mcpConfig = computed(() => JSON.stringify({
           {{ t('settings.saveGoals') }}
         </UButton>
       </UForm>
+    </UCard>
+
+    <!-- Health Goal -->
+    <UCard>
+      <template #header>
+        <div>
+          <p class="font-semibold">
+            {{ t('healthGoal.label') }}
+          </p>
+          <p class="text-sm text-[var(--ui-text-muted)]">
+            {{ t('healthGoal.subtitle') }}
+          </p>
+        </div>
+      </template>
+
+      <div class="space-y-4">
+        <div class="grid grid-cols-2 gap-2">
+          <button
+            v-for="goal in healthGoals"
+            :key="goal.key"
+            class="flex flex-col items-start gap-1.5 p-3 rounded-xl border-2 transition-all text-left"
+            :class="healthGoal === goal.key
+              ? 'border-primary bg-primary/10'
+              : 'border-[var(--ui-border)] hover:border-[var(--ui-border-accented)]'"
+            @click="healthGoal = goal.key"
+          >
+            <div class="flex items-center gap-2">
+              <UIcon
+                :name="goal.icon"
+                class="w-4 h-4"
+                :class="healthGoal === goal.key ? 'text-primary' : 'text-[var(--ui-text-muted)]'"
+              />
+              <span class="text-sm font-medium">{{ t(`healthGoal.${goal.key}`) }}</span>
+            </div>
+            <p class="text-xs text-[var(--ui-text-muted)]">
+              {{ t(`healthGoal.${goal.key}Desc`) }}
+            </p>
+          </button>
+        </div>
+
+        <UButton
+          block
+          :loading="savingHealthGoal"
+          icon="i-lucide-heart-pulse"
+          @click="saveHealthGoal"
+        >
+          {{ t('healthGoal.save') }}
+        </UButton>
+      </div>
     </UCard>
 
     <!-- AI Provider -->

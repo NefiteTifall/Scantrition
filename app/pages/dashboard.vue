@@ -1,6 +1,5 @@
 <script setup lang="ts">
 const { t } = useI18n()
-const toast = useToast()
 
 const today = new Date().toISOString().split('T')[0] ?? ''
 const currentDate = ref(today)
@@ -24,7 +23,7 @@ const consumed = computed(() => {
   )
 })
 
-const defaultGoals = { calories: 2000, protein: 150, carbs: 250, fat: 70 }
+const defaultGoals = { calories: 2000, protein: 150, carbs: 250, fat: 70, fiber: 25 }
 const safeGoals = computed(() => goals.value ?? defaultGoals)
 
 function formatDate(dateStr: string) {
@@ -57,6 +56,19 @@ const categoryMeta: Record<MealCategory, { icon: string, colorClass: string, bgC
   dinner: { icon: 'i-lucide-moon', colorClass: 'text-blue-400', bgClass: 'bg-blue-400/15' }
 }
 
+const categoryMacros = computed(() => {
+  const result = {} as Record<MealCategory, { protein: number, carbs: number, fat: number }>
+  for (const cat of categoryOrder) {
+    const ms = (meals.value ?? []).filter(m => m.mealCategory === cat)
+    result[cat] = {
+      protein: ms.reduce((s, m) => s + (m.totalProtein ?? 0), 0),
+      carbs: ms.reduce((s, m) => s + (m.totalCarbs ?? 0), 0),
+      fat: ms.reduce((s, m) => s + (m.totalFat ?? 0), 0)
+    }
+  }
+  return result
+})
+
 const mealsByCategory = computed(() => {
   const list = meals.value ?? []
   const result = {} as Record<MealCategory | 'none', typeof list>
@@ -68,15 +80,6 @@ const mealsByCategory = computed(() => {
 })
 
 const uncategorizedMeals = computed(() => mealsByCategory.value.none ?? [])
-
-async function deleteMeal(id: string) {
-  try {
-    await $fetch(`/api/meals/${id}`, { method: 'DELETE' })
-    await refreshMeals()
-  } catch {
-    toast.add({ title: t('common.error'), color: 'error' })
-  }
-}
 
 // Recipe suggestions
 interface RecipeSuggestion {
@@ -194,19 +197,52 @@ async function fetchSuggestions() {
           </div>
         </NuxtLink>
 
-        <!-- Meals in this category -->
+        <!-- Macro stacked bar -->
         <div
           v-if="mealsByCategory[cat].length"
-          class="border-t border-[var(--ui-border)] divide-y divide-[var(--ui-border)]"
+          class="border-t border-[var(--ui-border)] px-4 py-3 space-y-2"
         >
-          <MealCard
+          <!-- Bar -->
+          <div
+            v-if="categoryMacros[cat].protein + categoryMacros[cat].carbs + categoryMacros[cat].fat > 0"
+            class="flex h-2 rounded-full overflow-hidden gap-px"
+          >
+            <div
+              class="bg-blue-400 h-full transition-all"
+              :style="`width: ${categoryMacros[cat].protein / (categoryMacros[cat].protein + categoryMacros[cat].carbs + categoryMacros[cat].fat) * 100}%`"
+            />
+            <div
+              class="bg-amber-400 h-full transition-all"
+              :style="`width: ${categoryMacros[cat].carbs / (categoryMacros[cat].protein + categoryMacros[cat].carbs + categoryMacros[cat].fat) * 100}%`"
+            />
+            <div
+              class="bg-purple-400 h-full transition-all"
+              :style="`width: ${categoryMacros[cat].fat / (categoryMacros[cat].protein + categoryMacros[cat].carbs + categoryMacros[cat].fat) * 100}%`"
+            />
+          </div>
+          <!-- Labels -->
+          <div class="flex gap-3 text-xs text-[var(--ui-text-muted)]">
+            <span class="flex items-center gap-1">
+              <span class="w-2 h-2 rounded-full bg-blue-400 shrink-0" />
+              {{ Math.round(categoryMacros[cat].protein) }}g P
+            </span>
+            <span class="flex items-center gap-1">
+              <span class="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+              {{ Math.round(categoryMacros[cat].carbs) }}g G
+            </span>
+            <span class="flex items-center gap-1">
+              <span class="w-2 h-2 rounded-full bg-purple-400 shrink-0" />
+              {{ Math.round(categoryMacros[cat].fat) }}g L
+            </span>
+          </div>
+          <!-- Product names -->
+          <p
             v-for="meal in mealsByCategory[cat]"
             :key="meal.id"
-            :meal="meal"
-            borderless
-            @delete="deleteMeal"
-            @updated="() => refreshMeals()"
-          />
+            class="text-xs text-[var(--ui-text-muted)] truncate"
+          >
+            · {{ (meal.items as Array<{ name: string }>).map(i => i.name).join(', ') }}
+          </p>
         </div>
       </div>
     </div>

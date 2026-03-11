@@ -16,14 +16,14 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
+  buildDir: '.nuxt',
+
   routeRules: {
     '/login': { prerender: true },
     '/register': { prerender: true }
   },
 
   compatibilityDate: '2025-01-15',
-
-  buildDir: '.nuxt',
 
   vite: {
     server: {
@@ -34,6 +34,12 @@ export default defineNuxtConfig({
   typescript: {
     tsConfig: {
       include: ['types/**/*.d.ts']
+    }
+  },
+
+  hooks: {
+    close: () => {
+      process.exit(0)
     }
   },
 
@@ -54,12 +60,6 @@ export default defineNuxtConfig({
     defaultLocale: 'fr',
     langDir: 'locales/',
     strategy: 'no_prefix'
-  },
-
-  hooks: {
-    close: () => {
-      process.exit(0)
-    }
   },
 
   pwa: {

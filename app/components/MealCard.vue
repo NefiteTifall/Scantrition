@@ -12,6 +12,13 @@ interface Meal {
   totalProtein: number
   totalCarbs: number
   totalFat: number
+  totalFiber?: number | null
+  totalSugar?: number | null
+  totalSaturatedFat?: number | null
+  totalSalt?: number | null
+  nutriScore?: 'A' | 'B' | 'C' | 'D' | 'E' | null
+  healthScore?: number | null
+  healthLabel?: 'excellent' | 'good' | 'limit' | 'avoid' | null
   confidence: number | null
   source: string | null
   createdAt: string
@@ -22,21 +29,6 @@ const emit = defineEmits<{ delete: [id: string], updated: [id: string] }>()
 
 const { t } = useI18n()
 const toast = useToast()
-
-const typeIcon: Record<string, string> = {
-  text: 'i-lucide-message-square',
-  photo: 'i-lucide-camera',
-  barcode: 'i-lucide-scan-barcode',
-  search: 'i-lucide-search',
-  favorite: 'i-lucide-heart'
-}
-
-const categoryIcon: Record<string, string> = {
-  breakfast: 'i-lucide-sunrise',
-  lunch: 'i-lucide-sun',
-  snack: 'i-lucide-apple',
-  dinner: 'i-lucide-moon'
-}
 
 const mealCategories: Array<{ key: MealCategory, icon: string }> = [
   { key: 'breakfast', icon: 'i-lucide-sunrise' },
@@ -50,6 +42,30 @@ const itemNames = computed(() => props.meal.items.map(i => i.name).join(', '))
 function formatTime(dateStr: string) {
   return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
+
+const macros = computed(() => [
+  {
+    key: 'protein',
+    label: t('dashboard.protein'),
+    value: props.meal.totalProtein,
+    max: 150,
+    color: 'bg-blue-400'
+  },
+  {
+    key: 'carbs',
+    label: t('dashboard.carbs'),
+    value: props.meal.totalCarbs,
+    max: 250,
+    color: 'bg-amber-400'
+  },
+  {
+    key: 'fat',
+    label: t('dashboard.fat'),
+    value: props.meal.totalFat,
+    max: 70,
+    color: 'bg-purple-400'
+  }
+])
 
 // Edit modal
 const showEdit = ref(false)
@@ -90,70 +106,104 @@ async function saveEdit() {
 </script>
 
 <template>
-  <UCard :ui="borderless ? { body: 'px-4 py-3', root: 'rounded-none shadow-none border-0 ring-0' } : undefined">
-    <div class="flex items-start gap-3">
-      <div class="mt-0.5 p-2 rounded-lg bg-[var(--ui-border)] shrink-0">
-        <UIcon
-          :name="typeIcon[meal.type] ?? 'i-lucide-utensils'"
-          class="w-4 h-4 text-[var(--ui-text-muted)]"
-        />
-      </div>
-
+  <div class="px-4 py-3">
+    <!-- Header: name + kcal + actions -->
+    <div class="flex items-start justify-between gap-2 mb-3">
       <div class="flex-1 min-w-0">
-        <div class="flex items-center gap-1.5">
-          <p class="font-medium truncate">
+        <div class="flex items-center gap-2 flex-wrap">
+          <p class="font-semibold text-sm leading-snug">
             {{ itemNames }}
           </p>
-          <UBadge
-            v-if="meal.mealCategory"
-            color="neutral"
-            variant="subtle"
-            size="xs"
-            class="shrink-0"
-          >
-            <UIcon
-              :name="categoryIcon[meal.mealCategory]"
-              class="w-3 h-3 mr-0.5"
-            />
-            {{ t(`mealCategory.${meal.mealCategory}`) }}
-          </UBadge>
+          <span
+            v-if="meal.nutriScore"
+            class="text-[10px] font-bold px-1.5 py-0.5 rounded text-white shrink-0"
+            :class="{
+              'bg-green-500': meal.nutriScore === 'A',
+              'bg-lime-500': meal.nutriScore === 'B',
+              'bg-yellow-500': meal.nutriScore === 'C',
+              'bg-orange-500': meal.nutriScore === 'D',
+              'bg-red-500': meal.nutriScore === 'E'
+            }"
+          >{{ meal.nutriScore }}</span>
+          <span
+            v-if="meal.healthLabel"
+            class="text-[10px] font-bold px-1.5 py-0.5 rounded text-white shrink-0"
+            :class="{
+              'bg-green-500': meal.healthLabel === 'excellent',
+              'bg-lime-500': meal.healthLabel === 'good',
+              'bg-orange-500': meal.healthLabel === 'limit',
+              'bg-red-500': meal.healthLabel === 'avoid'
+            }"
+          >{{ t('healthLabel.' + meal.healthLabel) }}{{ meal.healthScore != null ? ` (${meal.healthScore})` : '' }}</span>
         </div>
         <p class="text-xs text-[var(--ui-text-muted)] mt-0.5">
           {{ formatTime(meal.createdAt) }}
-          <template v-if="meal.confidence && meal.confidence < 1">
-            · {{ Math.round(meal.confidence * 100) }}% {{ t('add.confidence') }}
-          </template>
         </p>
-        <div class="flex items-center gap-3 mt-2 text-xs text-[var(--ui-text-muted)]">
-          <span>P {{ Math.round(meal.totalProtein) }}g</span>
-          <span>G {{ Math.round(meal.totalCarbs) }}g</span>
-          <span>L {{ Math.round(meal.totalFat) }}g</span>
-        </div>
       </div>
-
-      <div class="flex flex-col items-end gap-1 shrink-0">
+      <div class="flex items-center gap-2 shrink-0">
         <span class="font-bold text-primary">{{ Math.round(meal.totalCalories) }} kcal</span>
-        <div class="flex gap-1">
-          <UButton
-            icon="i-lucide-pencil"
-            variant="ghost"
-            color="neutral"
-            size="xs"
-            :aria-label="t('common.edit')"
-            @click="openEdit"
-          />
-          <UButton
-            icon="i-lucide-trash-2"
-            variant="ghost"
-            color="error"
-            size="xs"
-            :aria-label="t('common.delete')"
-            @click="emit('delete', meal.id)"
+        <UButton
+          icon="i-lucide-pencil"
+          variant="ghost"
+          color="neutral"
+          size="xs"
+          :aria-label="t('common.edit')"
+          @click="openEdit"
+        />
+        <UButton
+          icon="i-lucide-trash-2"
+          variant="ghost"
+          color="error"
+          size="xs"
+          :aria-label="t('common.delete')"
+          @click="emit('delete', meal.id)"
+        />
+      </div>
+    </div>
+
+    <!-- Macro rows -->
+    <div class="space-y-2">
+      <div
+        v-for="macro in macros"
+        :key="macro.key"
+      >
+        <div class="flex justify-between text-xs mb-1">
+          <span class="text-[var(--ui-text-muted)]">{{ macro.label }}</span>
+          <span class="font-medium">{{ Math.round(macro.value) }}g</span>
+        </div>
+        <div class="h-1.5 rounded-full bg-[var(--ui-bg-elevated)] overflow-hidden">
+          <div
+            class="h-full rounded-full transition-all"
+            :class="macro.color"
+            :style="`width: ${Math.min(macro.value / macro.max * 100, 100)}%`"
           />
         </div>
       </div>
     </div>
-  </UCard>
+
+    <!-- Extended details -->
+    <div
+      v-if="meal.totalFiber || meal.totalSugar || meal.totalSaturatedFat || meal.totalSalt"
+      class="flex flex-wrap gap-x-3 gap-y-0.5 mt-2 pt-2 border-t border-[var(--ui-border)]"
+    >
+      <span
+        v-if="meal.totalFiber"
+        class="text-xs text-[var(--ui-text-muted)]"
+      >Fibres {{ Math.round((meal.totalFiber ?? 0) * 10) / 10 }}g</span>
+      <span
+        v-if="meal.totalSugar"
+        class="text-xs text-[var(--ui-text-muted)]"
+      >Sucres {{ Math.round((meal.totalSugar ?? 0) * 10) / 10 }}g</span>
+      <span
+        v-if="meal.totalSaturatedFat"
+        class="text-xs text-[var(--ui-text-muted)]"
+      >AG sat. {{ Math.round((meal.totalSaturatedFat ?? 0) * 10) / 10 }}g</span>
+      <span
+        v-if="meal.totalSalt"
+        class="text-xs text-[var(--ui-text-muted)]"
+      >Sel {{ Math.round((meal.totalSalt ?? 0) * 10) / 10 }}g</span>
+    </div>
+  </div>
 
   <!-- Edit modal -->
   <UModal

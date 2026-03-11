@@ -93,6 +93,7 @@
     "aiAnalysis": "AI analysis",
     "scanAgain": "Scan again",
     "changePhoto": "Change photo",
+    "todayMeals": "Today's meals",
     "favorites": "My favorites",
     "noFavorites": "No favorites yet",
     "portionGrams": "Quantity",
@@ -128,7 +129,10 @@
     "protein": "prot.",
     "carbs": "carbs",
     "fat": "fat",
-    "fiber": "fiber",
+    "fiber": "Fiber",
+    "sugar": "Sugar",
+    "saturatedFat": "Saturated fat",
+    "salt": "Salt",
     "total": "Total",
     "g": "g"
   },
@@ -202,6 +206,27 @@
     "dinner": "Dinner",
     "uncategorized": "Other"
   },
+  "healthGoal": {
+    "label": "Health goal",
+    "subtitle": "Adapts the health score of each meal to your goal",
+    "muscle": "Muscle building",
+    "muscleDesc": "Prioritize protein and calories",
+    "healthy": "Healthy eating",
+    "healthyDesc": "Balance, fiber, low sugar and salt",
+    "weightloss": "Weight loss",
+    "weightlossDesc": "Low calorie, high protein",
+    "performance": "Athletic performance",
+    "performanceDesc": "Carbs and energy first",
+    "balance": "General balance",
+    "balanceDesc": "Moderation on all nutrients",
+    "save": "Save goal"
+  },
+  "healthLabel": {
+    "excellent": "Excellent",
+    "good": "Good",
+    "limit": "Limit",
+    "avoid": "Avoid"
+  },
   "settings": {
     "title": "Settings",
     "goalsTitle": "Daily goals",
@@ -210,6 +235,7 @@
     "proteinGoal": "Protein (g)",
     "carbsGoal": "Carbs (g)",
     "fatGoal": "Fat (g)",
+    "fiberGoal": "Fiber (g)",
     "aiTitle": "AI Provider",
     "aiSubtitle": "Configure your AI model for meal analysis",
     "provider": "Provider",

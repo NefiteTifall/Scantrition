@@ -8,6 +8,20 @@
       "when": 1773215465201,
       "tag": "0000_strange_lady_bullseye",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1773239777826,
+      "tag": "0001_careless_captain_britain",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1773243651191,
+      "tag": "0002_fixed_captain_marvel",
+      "breakpoints": true
     }
   ]
 }

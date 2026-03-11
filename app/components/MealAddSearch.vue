@@ -56,6 +56,10 @@ const scaled = computed(() => {
 function addToJournal() {
   if (!selected.value || !scaled.value) return
   const result: NutritionResult = {
+    productName: selected.value.name,
+    brand: selected.value.brand ?? undefined,
+    image: selected.value.image ?? undefined,
+    barcode: selected.value.code ?? undefined,
     items: [{
       name: selected.value.name,
       quantity: `${quantity.value}g`,

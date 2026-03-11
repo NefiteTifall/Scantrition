@@ -11,6 +11,9 @@ export interface MealItem {
   carbs: number
   fat: number
   fiber?: number
+  sugar?: number
+  saturatedFat?: number
+  salt?: number
 }
 
 export interface NutritionResult {
@@ -19,13 +22,20 @@ export interface NutritionResult {
   totalProtein: number
   totalCarbs: number
   totalFat: number
+  totalFiber?: number
+  totalSugar?: number
+  totalSaturatedFat?: number
+  totalSalt?: number
+  nutriScore?: 'A' | 'B' | 'C' | 'D' | 'E'
+  healthScore?: number
+  healthLabel?: 'excellent' | 'good' | 'limit' | 'avoid'
   confidence: number
 }
 
 export interface AIProvider {
   providerName: string
-  analyzeText(description: string): Promise<NutritionResult>
-  analyzeImage(imageBase64: string, mimeType: string): Promise<NutritionResult>
+  analyzeText(description: string, healthGoal?: string): Promise<NutritionResult>
+  analyzeImage(imageBase64: string, mimeType: string, healthGoal?: string): Promise<NutritionResult>
   generateText(prompt: string): Promise<string>
 }
 
@@ -67,29 +77,56 @@ export function extractProviderError(err: unknown, provider: string): string {
   return bodyMsg || err.message || `Erreur ${provider}`
 }
 
-export const TEXT_PROMPT = (description: string) => `You are a nutrition analysis assistant. The user describes what they ate. Parse the description and return estimated nutritional values.
+export const HEALTH_GOAL_CONTEXT: Record<string, string> = {
+  muscle: 'muscle building: reward high protein (>20g), adequate calories; carbs/energy are positive; additives and salt are less important',
+  healthy: 'healthy eating: value fiber, balance, low sugar/salt/saturated fat; penalize processed/high-sugar foods heavily',
+  weightloss: 'weight loss: reward low calories (<400kcal), high protein for satiety; penalize high fat, sugar, refined carbs',
+  performance: 'athletic performance: reward complex carbs for energy, adequate protein; penalize very low-calorie or low-carb meals',
+  balance: 'general balance: slight bonus for fiber and protein, slight penalty for excess sugar or salt; moderate on everything'
+}
+
+const NUTRITION_RULES = `Rules:
+- Return values in grams for macros, kcal for calories
+- fiber: dietary fiber (g)
+- sugar: total sugars, subset of carbs (g)
+- saturatedFat: saturated fatty acids, subset of fat (g)
+- salt: sodium chloride equivalent in grams (estimate from sodium × 2.5)
+- nutriScore: Nutri-Score letter (A/B/C/D/E) based on overall nutritional quality`
+
+function healthScoreInstruction(healthGoal?: string): string {
+  if (!healthGoal || healthGoal === 'balance') {
+    return `- healthScore: integer 0-100 estimating overall nutritional quality
+- healthLabel: "excellent" (≥80), "good" (60-79), "limit" (40-59), or "avoid" (<40)`
+  }
+  const ctx = HEALTH_GOAL_CONTEXT[healthGoal] ?? HEALTH_GOAL_CONTEXT.balance
+  return `- User's health goal: ${ctx}
+- healthScore: integer 0-100 based on how well this meal aligns with the goal
+- healthLabel: "excellent" (≥80), "good" (60-79), "limit" (40-59), or "avoid" (<40)`
+}
+
+export const TEXT_PROMPT = (description: string, healthGoal?: string) => `You are a nutrition analysis assistant. The user describes what they ate. Parse the description and return estimated nutritional values.
 
 User description: "${description}"
 
-Rules:
+${NUTRITION_RULES}
 - Infer standard portion sizes if not specified
 - Use common French/European food database values
 - If the description is ambiguous, make reasonable assumptions and lower confidence
-- Return values in grams for macros, kcal for calories
+${healthScoreInstruction(healthGoal)}
 
 Respond ONLY with valid JSON, no markdown, no explanation:
-{"items":[{"name":"","quantity":"","calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0}],"totalCalories":0,"totalProtein":0,"totalCarbs":0,"totalFat":0,"confidence":0.75}`
+{"items":[{"name":"","quantity":"","calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sugar":0,"saturatedFat":0,"salt":0}],"totalCalories":0,"totalProtein":0,"totalCarbs":0,"totalFat":0,"totalFiber":0,"totalSugar":0,"totalSaturatedFat":0,"totalSalt":0,"nutriScore":"B","healthScore":70,"healthLabel":"good","confidence":0.75}`
 
-export const PHOTO_PROMPT = `You are a nutrition analysis assistant. Analyze the food in this image and return a JSON response with the estimated nutritional breakdown.
+export const PHOTO_PROMPT = (healthGoal?: string) => `You are a nutrition analysis assistant. Analyze the food in this image and return a JSON response with the estimated nutritional breakdown.
 
-Rules:
+${NUTRITION_RULES}
 - Estimate portions based on visual cues (plate size, utensils, etc.)
 - If unsure about a food item, make your best estimate and lower the confidence score
 - All values are per serving as shown in the image
-- Return values in grams for macros, kcal for calories
+${healthScoreInstruction(healthGoal)}
 
 Respond ONLY with valid JSON, no markdown, no explanation:
-{"items":[{"name":"","quantity":"","calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0}],"totalCalories":0,"totalProtein":0,"totalCarbs":0,"totalFat":0,"confidence":0.85}`
+{"items":[{"name":"","quantity":"","calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sugar":0,"saturatedFat":0,"salt":0}],"totalCalories":0,"totalProtein":0,"totalCarbs":0,"totalFat":0,"totalFiber":0,"totalSugar":0,"totalSaturatedFat":0,"totalSalt":0,"nutriScore":"B","healthScore":70,"healthLabel":"good","confidence":0.85}`
 
 export function parseNutritionJSON(text: string): NutritionResult {
   const cleaned = text
@@ -110,18 +147,18 @@ class GeminiProvider implements AIProvider {
     this.genAI = new GoogleGenerativeAI(apiKey)
   }
 
-  async analyzeText(description: string): Promise<NutritionResult> {
+  async analyzeText(description: string, healthGoal?: string): Promise<NutritionResult> {
     const model = this.genAI.getGenerativeModel({ model: this.model })
-    const result = await model.generateContent(TEXT_PROMPT(description))
+    const result = await model.generateContent(TEXT_PROMPT(description, healthGoal))
     return parseNutritionJSON(result.response.text())
   }
 
-  async analyzeImage(imageBase64: string, mimeType: string): Promise<NutritionResult> {
+  async analyzeImage(imageBase64: string, mimeType: string, healthGoal?: string): Promise<NutritionResult> {
     const model = this.genAI.getGenerativeModel({ model: this.model })
 
     const result = await model.generateContent([
       { inlineData: { mimeType: mimeType as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif', data: imageBase64 } },
-      { text: PHOTO_PROMPT }
+      { text: PHOTO_PROMPT(healthGoal) }
     ])
     return parseNutritionJSON(result.response.text())
   }
@@ -137,7 +174,7 @@ class OpenAIProvider implements AIProvider {
   providerName = 'OpenAI'
   constructor(private apiKey: string, private model = 'gpt-4o') {}
 
-  async analyzeText(description: string): Promise<NutritionResult> {
+  async analyzeText(description: string, healthGoal?: string): Promise<NutritionResult> {
     const res = await $fetch<{ choices: Array<{ message: { content: string } }> }>(
       'https://api.openai.com/v1/chat/completions',
       {
@@ -145,7 +182,7 @@ class OpenAIProvider implements AIProvider {
         headers: { 'Authorization': `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' },
         body: {
           model: this.model,
-          messages: [{ role: 'user', content: TEXT_PROMPT(description) }],
+          messages: [{ role: 'user', content: TEXT_PROMPT(description, healthGoal) }],
           max_tokens: 1024
         }
       }
@@ -153,7 +190,7 @@ class OpenAIProvider implements AIProvider {
     return parseNutritionJSON(res.choices[0]?.message?.content ?? '')
   }
 
-  async analyzeImage(imageBase64: string, mimeType: string): Promise<NutritionResult> {
+  async analyzeImage(imageBase64: string, mimeType: string, healthGoal?: string): Promise<NutritionResult> {
     const res = await $fetch<{ choices: Array<{ message: { content: string } }> }>(
       'https://api.openai.com/v1/chat/completions',
       {
@@ -165,7 +202,7 @@ class OpenAIProvider implements AIProvider {
             role: 'user',
             content: [
               { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}` } },
-              { type: 'text', text: PHOTO_PROMPT }
+              { type: 'text', text: PHOTO_PROMPT(healthGoal) }
             ]
           }],
           max_tokens: 1024
@@ -192,7 +229,7 @@ class AnthropicProvider implements AIProvider {
   providerName = 'Anthropic'
   constructor(private apiKey: string, private model = 'claude-sonnet-4-6') {}
 
-  async analyzeText(description: string): Promise<NutritionResult> {
+  async analyzeText(description: string, healthGoal?: string): Promise<NutritionResult> {
     const res = await $fetch<{ content: Array<{ text: string }> }>(
       'https://api.anthropic.com/v1/messages',
       {
@@ -205,14 +242,14 @@ class AnthropicProvider implements AIProvider {
         body: {
           model: this.model,
           max_tokens: 1024,
-          messages: [{ role: 'user', content: TEXT_PROMPT(description) }]
+          messages: [{ role: 'user', content: TEXT_PROMPT(description, healthGoal) }]
         }
       }
     )
     return parseNutritionJSON(res.content[0]?.text ?? '')
   }
 
-  async analyzeImage(imageBase64: string, mimeType: string): Promise<NutritionResult> {
+  async analyzeImage(imageBase64: string, mimeType: string, healthGoal?: string): Promise<NutritionResult> {
     const res = await $fetch<{ content: Array<{ text: string }> }>(
       'https://api.anthropic.com/v1/messages',
       {
@@ -229,7 +266,7 @@ class AnthropicProvider implements AIProvider {
             role: 'user',
             content: [
               { type: 'image', source: { type: 'base64', media_type: mimeType, data: imageBase64 } },
-              { type: 'text', text: PHOTO_PROMPT }
+              { type: 'text', text: PHOTO_PROMPT(healthGoal) }
             ]
           }]
         }
@@ -255,7 +292,7 @@ class OpenRouterProvider implements AIProvider {
   providerName = 'OpenRouter'
   constructor(private apiKey: string, private model = 'google/gemini-2.0-flash-001') {}
 
-  async analyzeText(description: string): Promise<NutritionResult> {
+  async analyzeText(description: string, healthGoal?: string): Promise<NutritionResult> {
     const res = await $fetch<{ choices: Array<{ message: { content: string } }> }>(
       'https://openrouter.ai/api/v1/chat/completions',
       {
@@ -263,14 +300,14 @@ class OpenRouterProvider implements AIProvider {
         headers: { 'Authorization': `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' },
         body: {
           model: this.model,
-          messages: [{ role: 'user', content: TEXT_PROMPT(description) }]
+          messages: [{ role: 'user', content: TEXT_PROMPT(description, healthGoal) }]
         }
       }
     )
     return parseNutritionJSON(res.choices[0]?.message?.content ?? '')
   }
 
-  async analyzeImage(imageBase64: string, mimeType: string): Promise<NutritionResult> {
+  async analyzeImage(imageBase64: string, mimeType: string, healthGoal?: string): Promise<NutritionResult> {
     const res = await $fetch<{ choices: Array<{ message: { content: string } }> }>(
       'https://openrouter.ai/api/v1/chat/completions',
       {
@@ -282,7 +319,7 @@ class OpenRouterProvider implements AIProvider {
             role: 'user',
             content: [
               { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}` } },
-              { type: 'text', text: PHOTO_PROMPT }
+              { type: 'text', text: PHOTO_PROMPT(healthGoal) }
             ]
           }]
         }

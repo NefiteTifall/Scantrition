@@ -3,7 +3,7 @@ import { requireAuth } from '../utils/apiAuth'
 import { getAIProvider, extractProviderError } from '../utils/ai'
 import { createMCPSession, getMCPSession, purgeExpiredSessions } from '../utils/mcpSessions'
 import { db } from '../db'
-import { meals, userGoals, weightEntries, favoriteMeals } from '../db/schema'
+import { meals, userGoals, weightEntries, userFavoriteProducts, products } from '../db/schema'
 import { eq, sql, desc, and } from 'drizzle-orm'
 
 const MCP_VERSION = '2025-11-25'
@@ -40,7 +40,7 @@ const TOOLS = [
   },
   {
     name: 'get_goals',
-    description: 'Get the user\'s daily nutrition goals (calories, protein, carbs, fat targets).',
+    description: 'Get the user\'s daily nutrition goals (calories, protein, carbs, fat, fiber targets) and their health goal (muscle/healthy/weightloss/performance/balance).',
     inputSchema: { type: 'object', properties: {} },
     annotations: {
       title: 'Daily Goals',
@@ -52,14 +52,20 @@ const TOOLS = [
   },
   {
     name: 'set_goals',
-    description: 'Update the user\'s daily nutrition goals. All fields are optional — only provided fields will be updated.',
+    description: 'Update the user\'s daily nutrition goals and/or health goal. All fields are optional — only provided fields will be updated.',
     inputSchema: {
       type: 'object',
       properties: {
         calories: { type: 'number', description: 'Daily calorie goal (kcal)' },
         protein: { type: 'number', description: 'Daily protein goal (g)' },
         carbs: { type: 'number', description: 'Daily carbs goal (g)' },
-        fat: { type: 'number', description: 'Daily fat goal (g)' }
+        fat: { type: 'number', description: 'Daily fat goal (g)' },
+        fiber: { type: 'number', description: 'Daily fiber goal (g, default 25)' },
+        health_goal: {
+          type: 'string',
+          enum: ['muscle', 'healthy', 'weightloss', 'performance', 'balance'],
+          description: 'Health goal that adjusts the meal health score: muscle (high protein), healthy (fiber/low sugar), weightloss (low cal), performance (high carbs), balance (general)'
+        }
       }
     },
     annotations: {
@@ -229,7 +235,8 @@ async function executeTool(name: string, args: Record<string, unknown>, userId: 
 
   if (name === 'get_goals') {
     const goals = await db.query.userGoals.findFirst({ where: eq(userGoals.userId, userId) })
-    return goals ?? { calories: 2000, protein: 150, carbs: 250, fat: 70 }
+    const g = goals ?? { calories: 2000, protein: 150, carbs: 250, fat: 70, healthGoal: 'balance' }
+    return g
   }
 
   if (name === 'get_today') {
@@ -245,9 +252,13 @@ async function executeTool(name: string, args: Record<string, unknown>, userId: 
         calories: acc.calories + m.totalCalories,
         protein: acc.protein + m.totalProtein,
         carbs: acc.carbs + m.totalCarbs,
-        fat: acc.fat + m.totalFat
+        fat: acc.fat + m.totalFat,
+        fiber: acc.fiber + (m.totalFiber ?? 0),
+        sugar: acc.sugar + (m.totalSugar ?? 0),
+        saturatedFat: acc.saturatedFat + (m.totalSaturatedFat ?? 0),
+        salt: acc.salt + (m.totalSalt ?? 0)
       }),
-      { calories: 0, protein: 0, carbs: 0, fat: 0 }
+      { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, saturatedFat: 0, salt: 0 }
     )
     return {
       date: today,
@@ -255,23 +266,36 @@ async function executeTool(name: string, args: Record<string, unknown>, userId: 
         calories: Math.round(consumed.calories),
         protein: Math.round(consumed.protein * 10) / 10,
         carbs: Math.round(consumed.carbs * 10) / 10,
-        fat: Math.round(consumed.fat * 10) / 10
+        fat: Math.round(consumed.fat * 10) / 10,
+        fiber: Math.round(consumed.fiber * 10) / 10,
+        sugar: Math.round(consumed.sugar * 10) / 10,
+        saturatedFat: Math.round(consumed.saturatedFat * 10) / 10,
+        salt: Math.round(consumed.salt * 10) / 10
       },
       goals: g,
       remaining: {
         calories: Math.max(0, g.calories - Math.round(consumed.calories)),
         protein: Math.max(0, Math.round((g.protein - consumed.protein) * 10) / 10),
         carbs: Math.max(0, Math.round((g.carbs - consumed.carbs) * 10) / 10),
-        fat: Math.max(0, Math.round((g.fat - consumed.fat) * 10) / 10)
+        fat: Math.max(0, Math.round((g.fat - consumed.fat) * 10) / 10),
+        fiber: Math.max(0, Math.round(((g.fiber ?? 25) - consumed.fiber) * 10) / 10)
       },
       meals: dayMeals.map(m => ({
         id: m.id,
         type: m.type,
+        mealCategory: m.mealCategory,
+        nutriScore: m.nutriScore,
+        healthScore: m.healthScore,
+        healthLabel: m.healthLabel,
         items: m.items,
         calories: Math.round(m.totalCalories),
         protein: Math.round(m.totalProtein * 10) / 10,
         carbs: Math.round(m.totalCarbs * 10) / 10,
         fat: Math.round(m.totalFat * 10) / 10,
+        fiber: Math.round((m.totalFiber ?? 0) * 10) / 10,
+        sugar: Math.round((m.totalSugar ?? 0) * 10) / 10,
+        saturatedFat: Math.round((m.totalSaturatedFat ?? 0) * 10) / 10,
+        salt: Math.round((m.totalSalt ?? 0) * 10) / 10,
         loggedAt: m.createdAt
       }))
     }
@@ -289,6 +313,10 @@ async function executeTool(name: string, args: Record<string, unknown>, userId: 
         protein: sql<number>`ROUND(SUM(${meals.totalProtein})::numeric, 1)`,
         carbs: sql<number>`ROUND(SUM(${meals.totalCarbs})::numeric, 1)`,
         fat: sql<number>`ROUND(SUM(${meals.totalFat})::numeric, 1)`,
+        fiber: sql<number>`ROUND(SUM(COALESCE(${meals.totalFiber}, 0))::numeric, 1)`,
+        sugar: sql<number>`ROUND(SUM(COALESCE(${meals.totalSugar}, 0))::numeric, 1)`,
+        saturatedFat: sql<number>`ROUND(SUM(COALESCE(${meals.totalSaturatedFat}, 0))::numeric, 1)`,
+        salt: sql<number>`ROUND(SUM(COALESCE(${meals.totalSalt}, 0))::numeric, 1)`,
         mealCount: sql<number>`COUNT(*)`
       })
       .from(meals)
@@ -299,11 +327,16 @@ async function executeTool(name: string, args: Record<string, unknown>, userId: 
   }
 
   if (name === 'set_goals') {
-    const update: Record<string, number> = {}
+    const update: Record<string, number | string> = {}
     if (args.calories !== undefined) update.calories = Math.round(Number(args.calories))
     if (args.protein !== undefined) update.protein = Math.round(Number(args.protein))
     if (args.carbs !== undefined) update.carbs = Math.round(Number(args.carbs))
     if (args.fat !== undefined) update.fat = Math.round(Number(args.fat))
+    if (args.fiber !== undefined) update.fiber = Math.round(Number(args.fiber))
+    const validHealthGoals = ['muscle', 'healthy', 'weightloss', 'performance', 'balance']
+    if (args.health_goal !== undefined && validHealthGoals.includes(String(args.health_goal))) {
+      update.healthGoal = String(args.health_goal)
+    }
     if (!Object.keys(update).length) throw new Error('Provide at least one goal to update')
 
     const existing = await db.query.userGoals.findFirst({ where: eq(userGoals.userId, userId) })
@@ -331,9 +364,13 @@ async function executeTool(name: string, args: Record<string, unknown>, userId: 
     const mealCategory = validCategories.includes(String(args.meal_category ?? ''))
       ? String(args.meal_category) as 'breakfast' | 'lunch' | 'snack' | 'dinner'
       : null
-    const provider = await getAIProvider(userId)
+    const [provider, goalsForMeal] = await Promise.all([
+      getAIProvider(userId),
+      db.query.userGoals.findFirst({ where: eq(userGoals.userId, userId) })
+    ])
+    const healthGoalForMeal = goalsForMeal?.healthGoal ?? 'balance'
     try {
-      const result = await provider.analyzeText(description)
+      const result = await provider.analyzeText(description, healthGoalForMeal)
       await db.insert(meals).values({
         userId,
         date: today,
@@ -344,6 +381,13 @@ async function executeTool(name: string, args: Record<string, unknown>, userId: 
         totalProtein: result.totalProtein,
         totalCarbs: result.totalCarbs,
         totalFat: result.totalFat,
+        totalFiber: result.totalFiber ?? 0,
+        totalSugar: result.totalSugar ?? 0,
+        totalSaturatedFat: result.totalSaturatedFat ?? 0,
+        totalSalt: result.totalSalt ?? 0,
+        nutriScore: result.nutriScore ?? null,
+        healthScore: result.healthScore ?? null,
+        healthLabel: result.healthLabel ?? null,
         confidence: result.confidence
       })
       return { logged: true, result }
@@ -373,6 +417,10 @@ async function executeTool(name: string, args: Record<string, unknown>, userId: 
         protein: sql<number>`ROUND(SUM(${meals.totalProtein})::numeric, 1)`,
         carbs: sql<number>`ROUND(SUM(${meals.totalCarbs})::numeric, 1)`,
         fat: sql<number>`ROUND(SUM(${meals.totalFat})::numeric, 1)`,
+        fiber: sql<number>`ROUND(SUM(COALESCE(${meals.totalFiber}, 0))::numeric, 1)`,
+        sugar: sql<number>`ROUND(SUM(COALESCE(${meals.totalSugar}, 0))::numeric, 1)`,
+        saturatedFat: sql<number>`ROUND(SUM(COALESCE(${meals.totalSaturatedFat}, 0))::numeric, 1)`,
+        salt: sql<number>`ROUND(SUM(COALESCE(${meals.totalSalt}, 0))::numeric, 1)`,
         mealCount: sql<number>`COUNT(*)`
       })
         .from(meals)
@@ -388,9 +436,10 @@ async function executeTool(name: string, args: Record<string, unknown>, userId: 
           calories: Math.round(data.reduce((s, d) => s + d.calories, 0) / daysWithData),
           protein: Math.round(data.reduce((s, d) => s + d.protein, 0) / daysWithData * 10) / 10,
           carbs: Math.round(data.reduce((s, d) => s + d.carbs, 0) / daysWithData * 10) / 10,
-          fat: Math.round(data.reduce((s, d) => s + d.fat, 0) / daysWithData * 10) / 10
+          fat: Math.round(data.reduce((s, d) => s + d.fat, 0) / daysWithData * 10) / 10,
+          fiber: Math.round(data.reduce((s, d) => s + (d.fiber ?? 0), 0) / daysWithData * 10) / 10
         }
-      : { calories: 0, protein: 0, carbs: 0, fat: 0 }
+      : { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 }
     return { period: `${sinceStr} → ${today}`, daysLogged: daysWithData, dailyAverage: avg, goals: g, days: data }
   }
 
@@ -445,15 +494,39 @@ async function executeTool(name: string, args: Record<string, unknown>, userId: 
   }
 
   if (name === 'get_favorite_meals') {
-    const favorites = await db.query.favoriteMeals.findMany({ where: eq(favoriteMeals.userId, userId) })
-    return { favorites: favorites.map(f => ({ id: f.id, name: f.name, calories: Math.round(f.totalCalories), protein: Math.round(f.totalProtein * 10) / 10, carbs: Math.round(f.totalCarbs * 10) / 10, fat: Math.round(f.totalFat * 10) / 10, items: f.items })) }
+    const rows = await db
+      .select()
+      .from(userFavoriteProducts)
+      .innerJoin(products, eq(userFavoriteProducts.productId, products.id))
+      .where(eq(userFavoriteProducts.userId, userId))
+    return {
+      favorites: rows.map(r => ({
+        id: r.user_favorite_products.id,
+        name: r.user_favorite_products.name,
+        productId: r.products.id,
+        calories: Math.round(r.products.calories),
+        protein: Math.round(r.products.protein * 10) / 10,
+        carbs: Math.round(r.products.carbs * 10) / 10,
+        fat: Math.round(r.products.fat * 10) / 10,
+        fiber: r.products.fiber != null ? Math.round(r.products.fiber * 10) / 10 : null,
+        nutriScore: r.products.nutriScore
+      }))
+    }
   }
 
   if (name === 'log_favorite') {
     const favoriteId = String(args.favorite_id ?? '')
     if (!favoriteId) throw new Error('favorite_id is required')
-    const fav = await db.query.favoriteMeals.findFirst({ where: and(eq(favoriteMeals.id, favoriteId), eq(favoriteMeals.userId, userId)) })
-    if (!fav) throw new Error('Favorite meal not found or does not belong to you')
+    const rows = await db
+      .select()
+      .from(userFavoriteProducts)
+      .innerJoin(products, eq(userFavoriteProducts.productId, products.id))
+      .where(and(eq(userFavoriteProducts.id, favoriteId), eq(userFavoriteProducts.userId, userId)))
+      .limit(1)
+    const row = rows[0]
+    if (!row) throw new Error('Favorite not found or does not belong to you')
+    const p = row.products
+    const favName = row.user_favorite_products.name
     const validCategories = ['breakfast', 'lunch', 'snack', 'dinner']
     const mealCategory = validCategories.includes(String(args.meal_category ?? ''))
       ? String(args.meal_category) as 'breakfast' | 'lunch' | 'snack' | 'dinner'
@@ -463,16 +536,17 @@ async function executeTool(name: string, args: Record<string, unknown>, userId: 
       date: today,
       type: 'favorite',
       mealCategory,
-      label: fav.name,
-      items: fav.items,
-      totalCalories: fav.totalCalories,
-      totalProtein: fav.totalProtein,
-      totalCarbs: fav.totalCarbs,
-      totalFat: fav.totalFat,
+      label: favName,
+      items: [{ productId: p.id, name: p.name, quantity: p.servingSize ?? '1 portion', calories: p.calories, protein: p.protein, carbs: p.carbs, fat: p.fat, fiber: p.fiber ?? undefined }],
+      totalCalories: p.calories,
+      totalProtein: p.protein,
+      totalCarbs: p.carbs,
+      totalFat: p.fat,
+      totalFiber: p.fiber ?? 0,
       confidence: 1
     }).returning()
-    if (!logged) throw new Error('Failed to log favorite meal')
-    return { logged: true, meal_id: logged.id, name: fav.name, calories: Math.round(fav.totalCalories) }
+    if (!logged) throw new Error('Failed to log favorite')
+    return { logged: true, meal_id: logged.id, name: favName, calories: Math.round(p.calories) }
   }
 
   throw new Error(`Unknown tool: ${name}`)
@@ -575,7 +649,11 @@ export default defineEventHandler(async (event) => {
               })
             })
 
-            const provider = await getAIProvider(userId!)
+            const [provider, goalsSSE] = await Promise.all([
+              getAIProvider(userId!),
+              db.query.userGoals.findFirst({ where: eq(userGoals.userId, userId!) })
+            ])
+            const healthGoalSSE = goalsSSE?.healthGoal ?? 'balance'
 
             await eventStream.push({
               data: JSON.stringify({
@@ -587,7 +665,7 @@ export default defineEventHandler(async (event) => {
 
             let result
             try {
-              result = await provider.analyzeText(description)
+              result = await provider.analyzeText(description, healthGoalSSE)
             } catch (err) {
               throw new Error(extractProviderError(err, provider.providerName))
             }
@@ -614,6 +692,13 @@ export default defineEventHandler(async (event) => {
               totalProtein: result.totalProtein,
               totalCarbs: result.totalCarbs,
               totalFat: result.totalFat,
+              totalFiber: result.totalFiber ?? 0,
+              totalSugar: result.totalSugar ?? 0,
+              totalSaturatedFat: result.totalSaturatedFat ?? 0,
+              totalSalt: result.totalSalt ?? 0,
+              nutriScore: result.nutriScore ?? null,
+              healthScore: result.healthScore ?? null,
+              healthLabel: result.healthLabel ?? null,
               confidence: result.confidence
             })
 
@@ -626,13 +711,20 @@ export default defineEventHandler(async (event) => {
                     type: 'text',
                     text: JSON.stringify({
                       logged: true,
-                      summary: `${Math.round(result.totalCalories)} kcal · P${Math.round(result.totalProtein)}g · G${Math.round(result.totalCarbs)}g · L${Math.round(result.totalFat)}g`,
+                      nutriScore: result.nutriScore ?? null,
+                      healthScore: result.healthScore ?? null,
+                      healthLabel: result.healthLabel ?? null,
+                      summary: `${Math.round(result.totalCalories)} kcal · P${Math.round(result.totalProtein)}g · G${Math.round(result.totalCarbs)}g · L${Math.round(result.totalFat)}g · Fibres${Math.round((result.totalFiber ?? 0) * 10) / 10}g`,
                       items: result.items,
                       totals: {
                         calories: Math.round(result.totalCalories),
                         protein: Math.round(result.totalProtein * 10) / 10,
                         carbs: Math.round(result.totalCarbs * 10) / 10,
-                        fat: Math.round(result.totalFat * 10) / 10
+                        fat: Math.round(result.totalFat * 10) / 10,
+                        fiber: Math.round((result.totalFiber ?? 0) * 10) / 10,
+                        sugar: Math.round((result.totalSugar ?? 0) * 10) / 10,
+                        saturatedFat: Math.round((result.totalSaturatedFat ?? 0) * 10) / 10,
+                        salt: Math.round((result.totalSalt ?? 0) * 10) / 10
                       },
                       confidence: result.confidence,
                       date: today

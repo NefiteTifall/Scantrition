@@ -58,6 +58,7 @@ export default defineEventHandler(async (event) => {
     source: name,
     productName: name,
     brand: product.brands,
-    image: product.image_url
+    image: product.image_url,
+    barcode: code
   }
 })
