@@ -23,6 +23,8 @@ export default defineNuxtConfig({
 
   compatibilityDate: '2025-01-15',
 
+  buildDir: '.nuxt',
+
   vite: {
     server: {
       allowedHosts: ['scantrition.nguillaume.fr']
