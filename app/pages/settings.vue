@@ -232,6 +232,8 @@ function formatLastUsed(dateStr: string | null) {
   return new Date(dateStr).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+const { canInstall, isIos, install } = usePwaInstall()
+
 const mcpEndpoint = computed(() => `${window?.location?.origin ?? ''}/api/mcp`)
 const mcpConfig = computed(() => JSON.stringify({
   mcpServers: {
@@ -669,6 +671,50 @@ const mcpConfig = computed(() => JSON.stringify({
           </UButton>
         </div>
       </div>
+    </UCard>
+
+    <!-- PWA Install -->
+    <UCard v-if="canInstall">
+      <template #header>
+        <div>
+          <p class="font-semibold">
+            {{ t('settings.installTitle') }}
+          </p>
+          <p class="text-sm text-[var(--ui-text-muted)]">
+            {{ t('settings.installSubtitle') }}
+          </p>
+        </div>
+      </template>
+
+      <!-- iOS: manual instructions -->
+      <div
+        v-if="isIos"
+        class="space-y-3"
+      >
+        <div class="flex items-start gap-3 text-sm">
+          <span class="text-xl shrink-0">1.</span>
+          <p>
+            {{ t('settings.installIosStep1') }} <UIcon
+              name="i-lucide-share"
+              class="w-4 h-4 inline-block"
+            />
+          </p>
+        </div>
+        <div class="flex items-start gap-3 text-sm">
+          <span class="text-xl shrink-0">2.</span>
+          <p>{{ t('settings.installIosStep2') }}</p>
+        </div>
+      </div>
+
+      <!-- Android/Chrome: native prompt -->
+      <UButton
+        v-else
+        block
+        icon="i-lucide-download"
+        @click="install"
+      >
+        {{ t('settings.installButton') }}
+      </UButton>
     </UCard>
 
     <!-- MCP Server -->
