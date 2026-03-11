@@ -484,7 +484,7 @@ const mcpConfig = computed(() => JSON.stringify({
           :key="loc.value"
           :variant="locale === loc.value ? 'solid' : 'outline'"
           :color="locale === loc.value ? 'primary' : 'neutral'"
-          @click="setLocale(loc.value)"
+          @click="setLocale(loc.value as 'fr' | 'en')"
         >
           {{ loc.label }}
         </UButton>

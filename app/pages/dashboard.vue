@@ -2,7 +2,7 @@
 const { t } = useI18n()
 const toast = useToast()
 
-const today = new Date().toISOString().split('T')[0]
+const today = new Date().toISOString().split('T')[0] ?? ''
 const currentDate = ref(today)
 
 const { data: meals, refresh: refreshMeals } = await useFetch('/api/meals', {
@@ -35,13 +35,13 @@ function formatDate(dateStr: string) {
 function prevDay() {
   const d = new Date(currentDate.value + 'T12:00:00')
   d.setDate(d.getDate() - 1)
-  currentDate.value = d.toISOString().split('T')[0]
+  currentDate.value = d.toISOString().split('T')[0] ?? ''
 }
 
 function nextDay() {
   const d = new Date(currentDate.value + 'T12:00:00')
   d.setDate(d.getDate() + 1)
-  currentDate.value = d.toISOString().split('T')[0]
+  currentDate.value = d.toISOString().split('T')[0] ?? ''
 }
 
 const isToday = computed(() => currentDate.value === today)
@@ -50,11 +50,11 @@ type MealCategory = 'breakfast' | 'lunch' | 'snack' | 'dinner'
 
 const categoryOrder: MealCategory[] = ['breakfast', 'lunch', 'snack', 'dinner']
 
-const categoryIcon: Record<MealCategory, string> = {
-  breakfast: 'i-lucide-sunrise',
-  lunch: 'i-lucide-sun',
-  snack: 'i-lucide-apple',
-  dinner: 'i-lucide-moon'
+const categoryMeta: Record<MealCategory, { icon: string, colorClass: string, bgClass: string }> = {
+  breakfast: { icon: 'i-lucide-sunrise', colorClass: 'text-orange-400', bgClass: 'bg-orange-400/15' },
+  lunch: { icon: 'i-lucide-sun', colorClass: 'text-green-400', bgClass: 'bg-green-400/15' },
+  snack: { icon: 'i-lucide-apple', colorClass: 'text-violet-400', bgClass: 'bg-violet-400/15' },
+  dinner: { icon: 'i-lucide-moon', colorClass: 'text-blue-400', bgClass: 'bg-blue-400/15' }
 }
 
 const mealsByCategory = computed(() => {
@@ -108,16 +108,18 @@ async function fetchSuggestions() {
 </script>
 
 <template>
-  <div class="max-w-xl mx-auto px-4 py-6 space-y-6">
+  <div class="max-w-xl mx-auto pb-8">
     <!-- Date navigation -->
-    <div class="flex items-center justify-between">
-      <UButton
-        icon="i-lucide-chevron-left"
-        variant="ghost"
-        color="neutral"
-        size="sm"
+    <div class="flex items-center justify-between px-4 py-3">
+      <button
+        class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[var(--ui-bg-elevated)] transition-colors"
         @click="prevDay"
-      />
+      >
+        <UIcon
+          name="i-lucide-chevron-left"
+          class="w-5 h-5"
+        />
+      </button>
       <div class="text-center">
         <p class="font-semibold capitalize">
           {{ isToday ? t('dashboard.title') : formatDate(currentDate) }}
@@ -129,52 +131,68 @@ async function fetchSuggestions() {
           {{ currentDate }}
         </p>
       </div>
-      <UButton
-        icon="i-lucide-chevron-right"
-        variant="ghost"
-        color="neutral"
-        size="sm"
+      <button
+        class="w-9 h-9 flex items-center justify-center rounded-full transition-colors"
+        :class="isToday ? 'opacity-30 cursor-not-allowed' : 'hover:bg-[var(--ui-bg-elevated)]'"
         :disabled="isToday"
         @click="nextDay"
-      />
+      >
+        <UIcon
+          name="i-lucide-chevron-right"
+          class="w-5 h-5"
+        />
+      </button>
     </div>
 
     <!-- Progress -->
-    <DailyProgress
-      :consumed="consumed"
-      :goals="safeGoals"
-    />
+    <div class="px-4 mb-2">
+      <DailyProgress
+        :consumed="consumed"
+        :goals="safeGoals"
+      />
+    </div>
 
-    <!-- Meal categories -->
-    <div class="space-y-3">
+    <!-- Category rows — Foodvisor style -->
+    <div class="mx-4 rounded-2xl border border-[var(--ui-border)] overflow-hidden divide-y divide-[var(--ui-border)]">
       <div
         v-for="cat in categoryOrder"
         :key="cat"
-        class="rounded-2xl border border-[var(--ui-border)] overflow-hidden"
       >
-        <!-- Category header -->
-        <div class="flex items-center justify-between px-4 py-3">
-          <div class="flex items-center gap-2">
+        <!-- Tappable header row -->
+        <NuxtLink
+          :to="`/add/${cat}`"
+          class="flex items-center gap-3 px-4 py-4 active:bg-[var(--ui-bg-elevated)] transition-colors"
+        >
+          <!-- Icon -->
+          <div
+            class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+            :class="categoryMeta[cat].bgClass"
+          >
             <UIcon
-              :name="categoryIcon[cat]"
-              class="w-4 h-4 text-[var(--ui-text-muted)]"
+              :name="categoryMeta[cat].icon"
+              class="w-5 h-5"
+              :class="categoryMeta[cat].colorClass"
             />
-            <span class="font-medium text-sm">{{ t(`mealCategory.${cat}`) }}</span>
           </div>
-          <div class="flex items-center gap-2">
-            <span class="text-xs text-[var(--ui-text-muted)]">
-              {{ Math.round(mealsByCategory[cat].reduce((s, m) => s + m.totalCalories, 0)) }} kcal
-            </span>
-            <NuxtLink :to="`/add?category=${cat}`">
-              <UButton
-                icon="i-lucide-plus"
-                size="xs"
-                variant="ghost"
-                color="neutral"
-              />
-            </NuxtLink>
+
+          <!-- Info -->
+          <div class="flex-1 min-w-0">
+            <p class="font-semibold text-sm">
+              {{ t(`mealCategory.${cat}`) }}
+            </p>
+            <p class="text-sm text-[var(--ui-text-muted)]">
+              {{ Math.round(mealsByCategory[cat].reduce((s, m) => s + (m.totalCalories ?? 0), 0)) }} kcal
+            </p>
           </div>
-        </div>
+
+          <!-- Big + button -->
+          <div class="w-10 h-10 rounded-full bg-[var(--ui-text)] flex items-center justify-center shrink-0">
+            <UIcon
+              name="i-lucide-plus"
+              class="w-5 h-5 text-[var(--ui-bg)]"
+            />
+          </div>
+        </NuxtLink>
 
         <!-- Meals in this category -->
         <div
@@ -187,31 +205,34 @@ async function fetchSuggestions() {
             :meal="meal"
             borderless
             @delete="deleteMeal"
-            @updated="refreshMeals"
+            @updated="() => refreshMeals()"
           />
         </div>
       </div>
+    </div>
 
-      <!-- Uncategorized meals (legacy) -->
-      <div
-        v-if="uncategorizedMeals.length"
-        class="space-y-2"
-      >
-        <p class="text-xs text-[var(--ui-text-muted)] px-1">
-          {{ t('mealCategory.uncategorized') }}
-        </p>
-        <MealCard
-          v-for="meal in uncategorizedMeals"
-          :key="meal.id"
-          :meal="meal"
-          @delete="deleteMeal"
-          @updated="refreshMeals"
-        />
-      </div>
+    <!-- Uncategorized meals (legacy) -->
+    <div
+      v-if="uncategorizedMeals.length"
+      class="mx-4 mt-3 space-y-2"
+    >
+      <p class="text-xs text-[var(--ui-text-muted)] px-1">
+        {{ t('mealCategory.uncategorized') }}
+      </p>
+      <MealCard
+        v-for="meal in uncategorizedMeals"
+        :key="meal.id"
+        :meal="meal"
+        @delete="deleteMeal"
+        @updated="() => refreshMeals()"
+      />
     </div>
 
     <!-- Recipe suggestions -->
-    <div v-if="isToday">
+    <div
+      v-if="isToday"
+      class="mx-4 mt-4"
+    >
       <div class="flex items-center justify-between mb-2">
         <h2 class="font-semibold">
           {{ t('recipes.title') }}
@@ -262,18 +283,5 @@ async function fetchSuggestions() {
         </UCard>
       </div>
     </div>
-
-    <!-- FAB -->
-    <NuxtLink
-      v-if="meals?.length"
-      to="/add"
-      class="fixed bottom-20 right-4 z-40"
-    >
-      <UButton
-        icon="i-lucide-plus"
-        size="xl"
-        class="rounded-full shadow-lg w-14 h-14"
-      />
-    </NuxtLink>
   </div>
 </template>

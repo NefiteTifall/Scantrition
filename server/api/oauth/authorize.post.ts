@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm'
 import { generateAuthCode } from '../../utils/oauth'
 
 export default defineEventHandler(async (event) => {
-  const session = await requireUserSession(event)
+  const session = await requireSession(event)
   const { client_id, redirect_uri, state, scope, code_challenge, code_challenge_method } = await readBody(event)
 
   if (!client_id || !redirect_uri) {

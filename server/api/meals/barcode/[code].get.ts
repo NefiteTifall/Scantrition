@@ -19,7 +19,7 @@ interface OpenFoodFactsResponse {
 }
 
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  await requireSession(event)
   const code = getRouterParam(event, 'code')
 
   if (!code) {

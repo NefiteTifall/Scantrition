@@ -150,7 +150,7 @@ class OpenAIProvider implements AIProvider {
         }
       }
     )
-    return parseNutritionJSON(res.choices[0].message.content)
+    return parseNutritionJSON(res.choices[0]?.message?.content ?? '')
   }
 
   async analyzeImage(imageBase64: string, mimeType: string): Promise<NutritionResult> {
@@ -172,7 +172,7 @@ class OpenAIProvider implements AIProvider {
         }
       }
     )
-    return parseNutritionJSON(res.choices[0].message.content)
+    return parseNutritionJSON(res.choices[0]?.message?.content ?? '')
   }
 
   async generateText(prompt: string): Promise<string> {
@@ -184,7 +184,7 @@ class OpenAIProvider implements AIProvider {
         body: { model: this.model, messages: [{ role: 'user', content: prompt }], max_tokens: 1024 }
       }
     )
-    return res.choices[0].message.content
+    return res.choices[0]?.message?.content ?? ''
   }
 }
 
@@ -209,7 +209,7 @@ class AnthropicProvider implements AIProvider {
         }
       }
     )
-    return parseNutritionJSON(res.content[0].text)
+    return parseNutritionJSON(res.content[0]?.text ?? '')
   }
 
   async analyzeImage(imageBase64: string, mimeType: string): Promise<NutritionResult> {
@@ -235,7 +235,7 @@ class AnthropicProvider implements AIProvider {
         }
       }
     )
-    return parseNutritionJSON(res.content[0].text)
+    return parseNutritionJSON(res.content[0]?.text ?? '')
   }
 
   async generateText(prompt: string): Promise<string> {
@@ -247,7 +247,7 @@ class AnthropicProvider implements AIProvider {
         body: { model: this.model, max_tokens: 1024, messages: [{ role: 'user', content: prompt }] }
       }
     )
-    return res.content[0].text
+    return res.content[0]?.text ?? ''
   }
 }
 
@@ -267,7 +267,7 @@ class OpenRouterProvider implements AIProvider {
         }
       }
     )
-    return parseNutritionJSON(res.choices[0].message.content)
+    return parseNutritionJSON(res.choices[0]?.message?.content ?? '')
   }
 
   async analyzeImage(imageBase64: string, mimeType: string): Promise<NutritionResult> {
@@ -288,7 +288,7 @@ class OpenRouterProvider implements AIProvider {
         }
       }
     )
-    return parseNutritionJSON(res.choices[0].message.content)
+    return parseNutritionJSON(res.choices[0]?.message?.content ?? '')
   }
 
   async generateText(prompt: string): Promise<string> {
@@ -300,7 +300,7 @@ class OpenRouterProvider implements AIProvider {
         body: { model: this.model, messages: [{ role: 'user', content: prompt }] }
       }
     )
-    return res.choices[0].message.content
+    return res.choices[0]?.message?.content ?? ''
   }
 }
 

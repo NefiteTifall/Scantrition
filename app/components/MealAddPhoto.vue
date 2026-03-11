@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { NutritionResult } from '~/server/utils/ai'
+import type { NutritionResult } from '~/types/nutrition'
 
 const emit = defineEmits<{ result: [result: NutritionResult] }>()
 const { t } = useI18n()
@@ -28,7 +28,7 @@ function handleFile(event: Event) {
   reader.onload = (e) => {
     const dataUrl = e.target?.result as string
     preview.value = dataUrl
-    imageBase64.value = dataUrl.split(',')[1]
+    imageBase64.value = dataUrl.split(',')[1] ?? null
   }
   reader.readAsDataURL(file)
 }

@@ -3,7 +3,7 @@ import { meals } from '../../db/schema'
 import { eq, asc } from 'drizzle-orm'
 
 export default defineEventHandler(async (event) => {
-  const session = await requireUserSession(event)
+  const session = await requireSession(event)
 
   const rows = await db.query.meals.findMany({
     where: eq(meals.userId, session.user.id),

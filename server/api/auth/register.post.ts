@@ -29,6 +29,8 @@ export default defineEventHandler(async (event) => {
     .values({ email: email.toLowerCase().trim(), passwordHash })
     .returning()
 
+  if (!user) throw createError({ statusCode: 500, message: 'Registration failed' })
+
   await db.insert(userGoals).values({ userId: user.id })
 
   await setUserSession(event, { user: { id: user.id, email: user.email } })

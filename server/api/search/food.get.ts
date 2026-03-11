@@ -18,7 +18,7 @@ interface OFFSearchResponse {
 }
 
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  await requireSession(event)
   const { q } = getQuery(event)
 
   if (!q || typeof q !== 'string' || q.trim().length < 2) {

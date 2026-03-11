@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { FormSubmitEvent } from '@nuxt/ui'
+import type { FormSubmitEvent, AuthFormField } from '@nuxt/ui'
 
 const { t } = useI18n()
 const { fetch: refreshSession } = useUserSession()

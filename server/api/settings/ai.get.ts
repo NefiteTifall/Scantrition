@@ -10,7 +10,7 @@ const envKeys: Record<string, string | undefined> = {
 }
 
 export default defineEventHandler(async (event) => {
-  const session = await requireUserSession(event)
+  const session = await requireSession(event)
 
   const settings = await db.query.aiSettings.findFirst({
     where: eq(aiSettings.userId, session.user.id)

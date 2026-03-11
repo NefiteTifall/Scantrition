@@ -225,7 +225,7 @@ function getBaseUrl(event: Parameters<typeof getHeader>[0]): string {
 }
 
 async function executeTool(name: string, args: Record<string, unknown>, userId: string): Promise<unknown> {
-  const today = new Date().toISOString().split('T')[0]
+  const today = new Date().toISOString().split('T')[0] ?? ''
 
   if (name === 'get_goals') {
     const goals = await db.query.userGoals.findFirst({ where: eq(userGoals.userId, userId) })
@@ -400,13 +400,14 @@ async function executeTool(name: string, args: Record<string, unknown>, userId: 
     const dateStr = String(args.date ?? today)
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/
     if (!dateRegex.test(dateStr)) throw new Error('date must be in YYYY-MM-DD format')
-    const note = args.note ? String(args.note) : undefined
+    const note = args.note ? String(args.note) : null
     const [entry] = await db.insert(weightEntries).values({
       userId,
       weight: weightVal,
       date: dateStr,
-      ...(note ? { note } : {})
+      note
     }).returning()
+    if (!entry) throw new Error('Failed to log weight')
     return { logged: true, entry }
   }
 
@@ -470,6 +471,7 @@ async function executeTool(name: string, args: Record<string, unknown>, userId: 
       totalFat: fav.totalFat,
       confidence: 1
     }).returning()
+    if (!logged) throw new Error('Failed to log favorite meal')
     return { logged: true, meal_id: logged.id, name: fav.name, calories: Math.round(fav.totalCalories) }
   }
 
@@ -558,7 +560,7 @@ export default defineEventHandler(async (event) => {
       const accept = getHeader(event, 'accept') ?? ''
       if (accept.includes('text/event-stream')) {
         const eventStream = createEventStream(event)
-        const today = new Date().toISOString().split('T')[0]
+        const today = new Date().toISOString().split('T')[0] ?? ''
 
         void (async () => {
           try {

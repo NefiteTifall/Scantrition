@@ -3,7 +3,7 @@ import { meals } from '../../db/schema'
 import { eq, desc, sql } from 'drizzle-orm'
 
 export default defineEventHandler(async (event) => {
-  const session = await requireUserSession(event)
+  const session = await requireSession(event)
 
   const results = await db
     .select({

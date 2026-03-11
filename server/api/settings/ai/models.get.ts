@@ -3,7 +3,7 @@ import { aiSettings } from '../../../db/schema'
 import { eq } from 'drizzle-orm'
 
 export default defineEventHandler(async (event) => {
-  const session = await requireUserSession(event)
+  const session = await requireSession(event)
   const { provider, apiKey: queryApiKey } = getQuery(event)
 
   const settings = await db.query.aiSettings.findFirst({

@@ -1,5 +1,5 @@
 export default defineEventHandler(async (event) => {
-  const session = await requireUserSession(event)
+  const session = await requireSession(event)
   const { description } = await readBody(event)
 
   if (!description?.trim()) {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { MealItem } from '~/server/db/schema'
+import type { MealItem } from '~/types/nutrition'
 
 type MealCategory = 'breakfast' | 'lunch' | 'snack' | 'dinner'
 

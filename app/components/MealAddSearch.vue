@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { NutritionResult } from '~/server/utils/ai'
+import type { NutritionResult } from '~/types/nutrition'
 
 const emit = defineEmits<{ result: [result: NutritionResult] }>()
 const { t } = useI18n()

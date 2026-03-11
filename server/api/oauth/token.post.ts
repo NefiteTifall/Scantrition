@@ -56,6 +56,8 @@ export default defineEventHandler(async (event) => {
       expiresAt: accessExpiresAt
     }).returning()
 
+    if (!at) throw createError({ statusCode: 500, message: 'Failed to create access token' })
+
     await db.insert(oauthRefreshTokens).values({
       tokenHash: rtHash,
       clientId: client_id,
@@ -108,6 +110,8 @@ export default defineEventHandler(async (event) => {
       scope: 'mcp',
       expiresAt: accessExpiresAt
     }).returning()
+
+    if (!newAtRecord) throw createError({ statusCode: 500, message: 'Failed to rotate access token' })
 
     await db.insert(oauthRefreshTokens).values({
       tokenHash: newRtHash,
