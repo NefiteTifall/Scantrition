@@ -54,6 +54,12 @@ export default defineNuxtConfig({
     strategy: 'no_prefix'
   },
 
+  hooks: {
+    close: () => {
+      process.exit(0)
+    }
+  },
+
   pwa: {
     manifest: {
       name: 'Scantrition',
