@@ -1,0 +1,215 @@
+<script setup lang="ts">
+const { t } = useI18n()
+const toast = useToast()
+
+const today = new Date().toISOString().split('T')[0]
+const currentDate = ref(today)
+
+const { data: meals, refresh: refreshMeals } = await useFetch('/api/meals', {
+  query: computed(() => ({ date: currentDate.value }))
+})
+
+const { data: goals } = await useFetch('/api/goals')
+
+const consumed = computed(() => {
+  const list = meals.value ?? []
+  return list.reduce(
+    (acc, m) => ({
+      calories: acc.calories + (m.totalCalories ?? 0),
+      protein: acc.protein + (m.totalProtein ?? 0),
+      carbs: acc.carbs + (m.totalCarbs ?? 0),
+      fat: acc.fat + (m.totalFat ?? 0)
+    }),
+    { calories: 0, protein: 0, carbs: 0, fat: 0 }
+  )
+})
+
+const defaultGoals = { calories: 2000, protein: 150, carbs: 250, fat: 70 }
+const safeGoals = computed(() => goals.value ?? defaultGoals)
+
+function formatDate(dateStr: string) {
+  const d = new Date(dateStr + 'T12:00:00')
+  return d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
+}
+
+function prevDay() {
+  const d = new Date(currentDate.value + 'T12:00:00')
+  d.setDate(d.getDate() - 1)
+  currentDate.value = d.toISOString().split('T')[0]
+}
+
+function nextDay() {
+  const d = new Date(currentDate.value + 'T12:00:00')
+  d.setDate(d.getDate() + 1)
+  currentDate.value = d.toISOString().split('T')[0]
+}
+
+const isToday = computed(() => currentDate.value === today)
+
+type MealCategory = 'breakfast' | 'lunch' | 'snack' | 'dinner'
+
+const categoryOrder: MealCategory[] = ['breakfast', 'lunch', 'snack', 'dinner']
+
+const categoryIcon: Record<MealCategory, string> = {
+  breakfast: 'i-lucide-sunrise',
+  lunch: 'i-lucide-sun',
+  snack: 'i-lucide-apple',
+  dinner: 'i-lucide-moon'
+}
+
+const mealsByCategory = computed(() => {
+  const list = meals.value ?? []
+  const result = {} as Record<MealCategory | 'none', typeof list>
+  for (const cat of categoryOrder) {
+    result[cat] = list.filter(m => m.mealCategory === cat)
+  }
+  result.none = list.filter(m => !m.mealCategory)
+  return result
+})
+
+const uncategorizedMeals = computed(() => mealsByCategory.value.none ?? [])
+
+async function deleteMeal(id: string) {
+  try {
+    await $fetch(`/api/meals/${id}`, { method: 'DELETE' })
+    await refreshMeals()
+  } catch {
+    toast.add({ title: t('common.error'), color: 'error' })
+  }
+}
+
+// Recipe suggestions
+interface RecipeSuggestion {
+  name: string
+  description: string
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+}
+
+const suggestions = ref<RecipeSuggestion[]>([])
+const suggestionsLoading = ref(false)
+const suggestionsError = ref(false)
+
+async function fetchSuggestions() {
+  suggestionsLoading.value = true
+  suggestionsError.value = false
+  suggestions.value = []
+  try {
+    const data = await $fetch<{ suggestions: RecipeSuggestion[] }>('/api/suggestions/recipes', { method: 'POST' })
+    suggestions.value = data.suggestions
+  } catch {
+    suggestionsError.value = true
+  } finally {
+    suggestionsLoading.value = false
+  }
+}
+</script>
+
+<template>
+  <div class="max-w-xl mx-auto px-4 py-6 space-y-6">
+    <!-- Date navigation -->
+    <div class="flex items-center justify-between">
+      <UButton icon="i-lucide-chevron-left" variant="ghost" color="neutral" size="sm" @click="prevDay" />
+      <div class="text-center">
+        <p class="font-semibold capitalize">{{ isToday ? t('dashboard.title') : formatDate(currentDate) }}</p>
+        <p v-if="!isToday" class="text-xs text-[var(--ui-text-muted)]">{{ currentDate }}</p>
+      </div>
+      <UButton
+        icon="i-lucide-chevron-right"
+        variant="ghost"
+        color="neutral"
+        size="sm"
+        :disabled="isToday"
+        @click="nextDay"
+      />
+    </div>
+
+    <!-- Progress -->
+    <DailyProgress :consumed="consumed" :goals="safeGoals" />
+
+    <!-- Meal categories -->
+    <div class="space-y-3">
+      <div
+        v-for="cat in categoryOrder"
+        :key="cat"
+        class="rounded-2xl border border-[var(--ui-border)] overflow-hidden"
+      >
+        <!-- Category header -->
+        <div class="flex items-center justify-between px-4 py-3">
+          <div class="flex items-center gap-2">
+            <UIcon :name="categoryIcon[cat]" class="w-4 h-4 text-[var(--ui-text-muted)]" />
+            <span class="font-medium text-sm">{{ t(`mealCategory.${cat}`) }}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-[var(--ui-text-muted)]">
+              {{ Math.round(mealsByCategory[cat].reduce((s, m) => s + m.totalCalories, 0)) }} kcal
+            </span>
+            <NuxtLink :to="`/add?category=${cat}`">
+              <UButton icon="i-lucide-plus" size="xs" variant="ghost" color="neutral" />
+            </NuxtLink>
+          </div>
+        </div>
+
+        <!-- Meals in this category -->
+        <div v-if="mealsByCategory[cat].length" class="border-t border-[var(--ui-border)] divide-y divide-[var(--ui-border)]">
+          <MealCard
+            v-for="meal in mealsByCategory[cat]"
+            :key="meal.id"
+            :meal="meal"
+            borderless
+            @delete="deleteMeal"
+            @updated="refreshMeals"
+          />
+        </div>
+      </div>
+
+      <!-- Uncategorized meals (legacy) -->
+      <div v-if="uncategorizedMeals.length" class="space-y-2">
+        <p class="text-xs text-[var(--ui-text-muted)] px-1">{{ t('mealCategory.uncategorized') }}</p>
+        <MealCard
+          v-for="meal in uncategorizedMeals"
+          :key="meal.id"
+          :meal="meal"
+          @delete="deleteMeal"
+          @updated="refreshMeals"
+        />
+      </div>
+    </div>
+
+    <!-- Recipe suggestions -->
+    <div v-if="isToday">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="font-semibold">{{ t('recipes.title') }}</h2>
+        <UButton size="sm" variant="outline" color="neutral" icon="i-lucide-sparkles" :loading="suggestionsLoading" @click="fetchSuggestions">
+          {{ t('recipes.suggest') }}
+        </UButton>
+      </div>
+      <p v-if="suggestionsError" class="text-sm text-[var(--ui-text-muted)]">{{ t('recipes.error') }}</p>
+      <div v-if="suggestions.length" class="space-y-2">
+        <UCard v-for="s in suggestions" :key="s.name">
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex-1 min-w-0">
+              <p class="font-medium">{{ s.name }}</p>
+              <p class="text-sm text-[var(--ui-text-muted)] mt-0.5">{{ s.description }}</p>
+            </div>
+            <div class="shrink-0 text-right">
+              <p class="font-bold text-primary">{{ Math.round(s.calories) }} kcal</p>
+              <p class="text-xs text-[var(--ui-text-muted)]">P {{ Math.round(s.protein) }}g</p>
+            </div>
+          </div>
+        </UCard>
+      </div>
+    </div>
+
+    <!-- FAB -->
+    <NuxtLink
+      v-if="meals?.length"
+      to="/add"
+      class="fixed bottom-20 right-4 z-40"
+    >
+      <UButton icon="i-lucide-plus" size="xl" class="rounded-full shadow-lg w-14 h-14" />
+    </NuxtLink>
+  </div>
+</template>

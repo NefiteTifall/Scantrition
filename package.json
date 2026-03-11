@@ -1,0 +1,45 @@
+{
+  "name": "Scantrition",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "lint": "eslint .",
+    "typecheck": "nuxt typecheck",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@iconify-json/lucide": "^1.2.95",
+    "@iconify-json/simple-icons": "^1.2.72",
+    "@nuxt/hints": "1.0.0-alpha.10",
+    "@nuxt/image": "2.0.0",
+    "@nuxt/ui": "^4.5.1",
+    "@nuxtjs/i18n": "^10.2.3",
+    "@vite-pwa/nuxt": "1.1.1",
+    "@zxing/browser": "^0.1.5",
+    "bcryptjs": "^3.0.3",
+    "drizzle-orm": "^0.45.1",
+    "nuxt": "^4.3.1",
+    "nuxt-auth-utils": "^0.5.29",
+    "pg": "^8.20.0",
+    "resend": "^6.9.3",
+    "tailwindcss": "^4.2.1"
+  },
+  "devDependencies": {
+    "@nuxt/eslint": "^1.15.2",
+    "@types/bcryptjs": "^3.0.0",
+    "@types/pg": "^8.18.0",
+    "drizzle-kit": "^0.31.9",
+    "eslint": "^10.0.2",
+    "typescript": "^5.9.3",
+    "vue-tsc": "^3.2.5"
+  },
+  "packageManager": "pnpm@10.30.3"
+}
