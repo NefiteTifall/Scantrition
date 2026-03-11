@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { FormSubmitEvent } from '@nuxt/ui'
 
-const {t} = useI18n()
-const {fetch: refreshSession} = useUserSession()
+const { t } = useI18n()
+const { fetch: refreshSession } = useUserSession()
 const route = useRoute()
 
 const loading = ref(false)
@@ -33,7 +33,7 @@ async function login(event: FormSubmitEvent<{ email: string, password: string }>
   try {
     await $fetch('/api/auth/login', {
       method: 'POST',
-      body: {email: event.data.email, password: event.data.password}
+      body: { email: event.data.email, password: event.data.password }
     })
     await refreshSession()
     const redirect = route.query.redirect as string | undefined
@@ -75,13 +75,19 @@ async function login(event: FormSubmitEvent<{ email: string, password: string }>
       <template #footer>
         <div class="space-y-2 text-center text-sm text-[var(--ui-text-muted)]">
           <p>
-            <NuxtLink to="/forgot-password" class="text-primary font-medium hover:underline">
+            <NuxtLink
+              to="/forgot-password"
+              class="text-primary font-medium hover:underline"
+            >
               {{ t('auth.forgotPassword') }}
             </NuxtLink>
           </p>
           <p>
             {{ t('auth.noAccount') }}
-            <NuxtLink to="/register" class="text-primary font-medium hover:underline ml-1">
+            <NuxtLink
+              to="/register"
+              class="text-primary font-medium hover:underline ml-1"
+            >
               {{ t('auth.registerHere') }}
             </NuxtLink>
           </p>

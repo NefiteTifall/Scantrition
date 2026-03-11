@@ -111,10 +111,23 @@ async function fetchSuggestions() {
   <div class="max-w-xl mx-auto px-4 py-6 space-y-6">
     <!-- Date navigation -->
     <div class="flex items-center justify-between">
-      <UButton icon="i-lucide-chevron-left" variant="ghost" color="neutral" size="sm" @click="prevDay" />
+      <UButton
+        icon="i-lucide-chevron-left"
+        variant="ghost"
+        color="neutral"
+        size="sm"
+        @click="prevDay"
+      />
       <div class="text-center">
-        <p class="font-semibold capitalize">{{ isToday ? t('dashboard.title') : formatDate(currentDate) }}</p>
-        <p v-if="!isToday" class="text-xs text-[var(--ui-text-muted)]">{{ currentDate }}</p>
+        <p class="font-semibold capitalize">
+          {{ isToday ? t('dashboard.title') : formatDate(currentDate) }}
+        </p>
+        <p
+          v-if="!isToday"
+          class="text-xs text-[var(--ui-text-muted)]"
+        >
+          {{ currentDate }}
+        </p>
       </div>
       <UButton
         icon="i-lucide-chevron-right"
@@ -127,7 +140,10 @@ async function fetchSuggestions() {
     </div>
 
     <!-- Progress -->
-    <DailyProgress :consumed="consumed" :goals="safeGoals" />
+    <DailyProgress
+      :consumed="consumed"
+      :goals="safeGoals"
+    />
 
     <!-- Meal categories -->
     <div class="space-y-3">
@@ -139,7 +155,10 @@ async function fetchSuggestions() {
         <!-- Category header -->
         <div class="flex items-center justify-between px-4 py-3">
           <div class="flex items-center gap-2">
-            <UIcon :name="categoryIcon[cat]" class="w-4 h-4 text-[var(--ui-text-muted)]" />
+            <UIcon
+              :name="categoryIcon[cat]"
+              class="w-4 h-4 text-[var(--ui-text-muted)]"
+            />
             <span class="font-medium text-sm">{{ t(`mealCategory.${cat}`) }}</span>
           </div>
           <div class="flex items-center gap-2">
@@ -147,13 +166,21 @@ async function fetchSuggestions() {
               {{ Math.round(mealsByCategory[cat].reduce((s, m) => s + m.totalCalories, 0)) }} kcal
             </span>
             <NuxtLink :to="`/add?category=${cat}`">
-              <UButton icon="i-lucide-plus" size="xs" variant="ghost" color="neutral" />
+              <UButton
+                icon="i-lucide-plus"
+                size="xs"
+                variant="ghost"
+                color="neutral"
+              />
             </NuxtLink>
           </div>
         </div>
 
         <!-- Meals in this category -->
-        <div v-if="mealsByCategory[cat].length" class="border-t border-[var(--ui-border)] divide-y divide-[var(--ui-border)]">
+        <div
+          v-if="mealsByCategory[cat].length"
+          class="border-t border-[var(--ui-border)] divide-y divide-[var(--ui-border)]"
+        >
           <MealCard
             v-for="meal in mealsByCategory[cat]"
             :key="meal.id"
@@ -166,8 +193,13 @@ async function fetchSuggestions() {
       </div>
 
       <!-- Uncategorized meals (legacy) -->
-      <div v-if="uncategorizedMeals.length" class="space-y-2">
-        <p class="text-xs text-[var(--ui-text-muted)] px-1">{{ t('mealCategory.uncategorized') }}</p>
+      <div
+        v-if="uncategorizedMeals.length"
+        class="space-y-2"
+      >
+        <p class="text-xs text-[var(--ui-text-muted)] px-1">
+          {{ t('mealCategory.uncategorized') }}
+        </p>
         <MealCard
           v-for="meal in uncategorizedMeals"
           :key="meal.id"
@@ -181,22 +213,50 @@ async function fetchSuggestions() {
     <!-- Recipe suggestions -->
     <div v-if="isToday">
       <div class="flex items-center justify-between mb-2">
-        <h2 class="font-semibold">{{ t('recipes.title') }}</h2>
-        <UButton size="sm" variant="outline" color="neutral" icon="i-lucide-sparkles" :loading="suggestionsLoading" @click="fetchSuggestions">
+        <h2 class="font-semibold">
+          {{ t('recipes.title') }}
+        </h2>
+        <UButton
+          size="sm"
+          variant="outline"
+          color="neutral"
+          icon="i-lucide-sparkles"
+          :loading="suggestionsLoading"
+          @click="fetchSuggestions"
+        >
           {{ t('recipes.suggest') }}
         </UButton>
       </div>
-      <p v-if="suggestionsError" class="text-sm text-[var(--ui-text-muted)]">{{ t('recipes.error') }}</p>
-      <div v-if="suggestions.length" class="space-y-2">
-        <UCard v-for="s in suggestions" :key="s.name">
+      <p
+        v-if="suggestionsError"
+        class="text-sm text-[var(--ui-text-muted)]"
+      >
+        {{ t('recipes.error') }}
+      </p>
+      <div
+        v-if="suggestions.length"
+        class="space-y-2"
+      >
+        <UCard
+          v-for="s in suggestions"
+          :key="s.name"
+        >
           <div class="flex items-start justify-between gap-3">
             <div class="flex-1 min-w-0">
-              <p class="font-medium">{{ s.name }}</p>
-              <p class="text-sm text-[var(--ui-text-muted)] mt-0.5">{{ s.description }}</p>
+              <p class="font-medium">
+                {{ s.name }}
+              </p>
+              <p class="text-sm text-[var(--ui-text-muted)] mt-0.5">
+                {{ s.description }}
+              </p>
             </div>
             <div class="shrink-0 text-right">
-              <p class="font-bold text-primary">{{ Math.round(s.calories) }} kcal</p>
-              <p class="text-xs text-[var(--ui-text-muted)]">P {{ Math.round(s.protein) }}g</p>
+              <p class="font-bold text-primary">
+                {{ Math.round(s.calories) }} kcal
+              </p>
+              <p class="text-xs text-[var(--ui-text-muted)]">
+                P {{ Math.round(s.protein) }}g
+              </p>
             </div>
           </div>
         </UCard>
@@ -209,7 +269,11 @@ async function fetchSuggestions() {
       to="/add"
       class="fixed bottom-20 right-4 z-40"
     >
-      <UButton icon="i-lucide-plus" size="xl" class="rounded-full shadow-lg w-14 h-14" />
+      <UButton
+        icon="i-lucide-plus"
+        size="xl"
+        class="rounded-full shadow-lg w-14 h-14"
+      />
     </NuxtLink>
   </div>
 </template>

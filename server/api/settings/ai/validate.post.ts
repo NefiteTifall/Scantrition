@@ -45,7 +45,7 @@ export default defineEventHandler(async (event) => {
         })
         break
       }
-}
+    }
     return { valid: true }
   } catch (err: unknown) {
     return { valid: false, error: extractProviderError(err, provider) }

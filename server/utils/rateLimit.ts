@@ -40,8 +40,8 @@ export function checkRateLimit(key: string, limit: number, windowMs: number): vo
 
 export function getClientIp(event: Parameters<typeof getHeader>[0]): string {
   return (
-    getHeader(event, 'x-forwarded-for')?.split(',')[0].trim() ??
-    getHeader(event, 'x-real-ip') ??
-    'unknown'
+    getHeader(event, 'x-forwarded-for')?.split(',')[0].trim()
+    ?? getHeader(event, 'x-real-ip')
+    ?? 'unknown'
   )
 }

@@ -41,12 +41,26 @@ const goalPercent = computed(() =>
 <template>
   <div class="max-w-xl mx-auto px-4 py-6 space-y-6">
     <div class="flex items-center gap-3">
-      <UButton icon="i-lucide-arrow-left" variant="ghost" color="neutral" size="sm" to="/history" />
-      <h1 class="text-xl font-bold">{{ t('trends.title') }}</h1>
+      <UButton
+        icon="i-lucide-arrow-left"
+        variant="ghost"
+        color="neutral"
+        size="sm"
+        to="/history"
+      />
+      <h1 class="text-xl font-bold">
+        {{ t('trends.title') }}
+      </h1>
     </div>
 
-    <div v-if="!days.length" class="text-center py-16 text-[var(--ui-text-muted)]">
-      <UIcon name="i-lucide-bar-chart-2" class="w-12 h-12 mx-auto mb-3 opacity-40" />
+    <div
+      v-if="!days.length"
+      class="text-center py-16 text-[var(--ui-text-muted)]"
+    >
+      <UIcon
+        name="i-lucide-bar-chart-2"
+        class="w-12 h-12 mx-auto mb-3 opacity-40"
+      />
       <p>{{ t('trends.noData') }}</p>
     </div>
 
@@ -54,31 +68,57 @@ const goalPercent = computed(() =>
       <!-- Summary cards -->
       <div class="grid grid-cols-2 gap-3">
         <UCard>
-          <p class="text-xs text-[var(--ui-text-muted)]">{{ t('trends.avgCalories') }}</p>
-          <p class="text-2xl font-bold text-primary mt-1">{{ averages.calories }}</p>
-          <p class="text-xs text-[var(--ui-text-muted)]">{{ goalPercent }}% {{ t('trends.goalLine').toLowerCase() }}</p>
+          <p class="text-xs text-[var(--ui-text-muted)]">
+            {{ t('trends.avgCalories') }}
+          </p>
+          <p class="text-2xl font-bold text-primary mt-1">
+            {{ averages.calories }}
+          </p>
+          <p class="text-xs text-[var(--ui-text-muted)]">
+            {{ goalPercent }}% {{ t('trends.goalLine').toLowerCase() }}
+          </p>
         </UCard>
         <UCard>
-          <p class="text-xs text-[var(--ui-text-muted)]">{{ t('trends.trackedDays') }}</p>
-          <p class="text-2xl font-bold mt-1">{{ days.length }}</p>
-          <p class="text-xs text-[var(--ui-text-muted)]">{{ t('trends.last30') }}</p>
+          <p class="text-xs text-[var(--ui-text-muted)]">
+            {{ t('trends.trackedDays') }}
+          </p>
+          <p class="text-2xl font-bold mt-1">
+            {{ days.length }}
+          </p>
+          <p class="text-xs text-[var(--ui-text-muted)]">
+            {{ t('trends.last30') }}
+          </p>
         </UCard>
         <UCard>
-          <p class="text-xs text-[var(--ui-text-muted)]">{{ t('trends.avgProtein') }}</p>
-          <p class="text-2xl font-bold mt-1">{{ averages.protein }}g</p>
-          <p class="text-xs text-[var(--ui-text-muted)]">objectif {{ goals.protein }}g</p>
+          <p class="text-xs text-[var(--ui-text-muted)]">
+            {{ t('trends.avgProtein') }}
+          </p>
+          <p class="text-2xl font-bold mt-1">
+            {{ averages.protein }}g
+          </p>
+          <p class="text-xs text-[var(--ui-text-muted)]">
+            objectif {{ goals.protein }}g
+          </p>
         </UCard>
         <UCard>
-          <p class="text-xs text-[var(--ui-text-muted)]">{{ t('trends.avgCarbs') }}</p>
-          <p class="text-2xl font-bold mt-1">{{ averages.carbs }}g</p>
-          <p class="text-xs text-[var(--ui-text-muted)]">objectif {{ goals.carbs }}g</p>
+          <p class="text-xs text-[var(--ui-text-muted)]">
+            {{ t('trends.avgCarbs') }}
+          </p>
+          <p class="text-2xl font-bold mt-1">
+            {{ averages.carbs }}g
+          </p>
+          <p class="text-xs text-[var(--ui-text-muted)]">
+            objectif {{ goals.carbs }}g
+          </p>
         </UCard>
       </div>
 
       <!-- Calories bar chart -->
       <UCard>
         <template #header>
-          <p class="font-semibold">{{ t('trends.caloriesChart') }}</p>
+          <p class="font-semibold">
+            {{ t('trends.caloriesChart') }}
+          </p>
         </template>
 
         <div class="relative">
@@ -96,7 +136,10 @@ const goalPercent = computed(() =>
               class="flex flex-col items-center gap-1 shrink-0"
               style="min-width: 28px"
             >
-              <div class="w-full flex items-end" style="height: 128px">
+              <div
+                class="w-full flex items-end"
+                style="height: 128px"
+              >
                 <div
                   class="w-full rounded-t transition-all"
                   :class="barColor(day.totalCalories)"
@@ -130,7 +173,9 @@ const goalPercent = computed(() =>
       <!-- Macros table -->
       <UCard>
         <template #header>
-          <p class="font-semibold">Détail par jour</p>
+          <p class="font-semibold">
+            Détail par jour
+          </p>
         </template>
         <div class="space-y-2">
           <div

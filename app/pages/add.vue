@@ -9,7 +9,7 @@ const toast = useToast()
 type Mode = 'text' | 'photo' | 'barcode' | 'search'
 type MealCategory = 'breakfast' | 'lunch' | 'snack' | 'dinner'
 
-const mealCategories: Array<{ key: MealCategory; icon: string }> = [
+const mealCategories: Array<{ key: MealCategory, icon: string }> = [
   { key: 'breakfast', icon: 'i-lucide-sunrise' },
   { key: 'lunch', icon: 'i-lucide-sun' },
   { key: 'snack', icon: 'i-lucide-apple' },
@@ -30,7 +30,7 @@ const mealCategory = ref<MealCategory>(
   validCategories.includes(queryCategory as MealCategory) ? queryCategory as MealCategory : getDefaultCategory()
 )
 
-const modes: Array<{ key: Mode; icon: string; label: string }> = [
+const modes: Array<{ key: Mode, icon: string, label: string }> = [
   { key: 'text', icon: 'i-lucide-message-square', label: t('add.textMode') },
   { key: 'photo', icon: 'i-lucide-camera', label: t('add.photoMode') },
   { key: 'barcode', icon: 'i-lucide-scan-barcode', label: t('add.barcodeMode') },
@@ -98,7 +98,9 @@ async function deleteFavorite(id: string) {
 
 <template>
   <div class="max-w-xl mx-auto px-4 py-6 space-y-5">
-    <h1 class="text-xl font-bold">{{ t('add.title') }}</h1>
+    <h1 class="text-xl font-bold">
+      {{ t('add.title') }}
+    </h1>
 
     <!-- Meal category -->
     <div class="grid grid-cols-4 gap-1 bg-[var(--ui-border)] rounded-xl p-1">
@@ -111,7 +113,10 @@ async function deleteFavorite(id: string) {
           : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]'"
         @click="mealCategory = cat.key"
       >
-        <UIcon :name="cat.icon" class="w-4 h-4" />
+        <UIcon
+          :name="cat.icon"
+          class="w-4 h-4"
+        />
         {{ t(`mealCategory.${cat.key}`) }}
       </button>
     </div>
@@ -127,36 +132,68 @@ async function deleteFavorite(id: string) {
           : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]'"
         @click="activeMode = mode.key"
       >
-        <UIcon :name="mode.icon" class="w-4 h-4" />
+        <UIcon
+          :name="mode.icon"
+          class="w-4 h-4"
+        />
         {{ mode.label }}
       </button>
     </div>
 
     <!-- Mode content -->
-    <MealAddText v-if="activeMode === 'text'" @result="addToJournal" />
-    <MealAddPhoto v-else-if="activeMode === 'photo'" @result="addToJournal" />
-    <MealAddBarcode v-else-if="activeMode === 'barcode'" @result="addToJournal" />
-    <MealAddSearch v-else-if="activeMode === 'search'" @result="addToJournal" />
+    <MealAddText
+      v-if="activeMode === 'text'"
+      @result="addToJournal"
+    />
+    <MealAddPhoto
+      v-else-if="activeMode === 'photo'"
+      @result="addToJournal"
+    />
+    <MealAddBarcode
+      v-else-if="activeMode === 'barcode'"
+      @result="addToJournal"
+    />
+    <MealAddSearch
+      v-else-if="activeMode === 'search'"
+      @result="addToJournal"
+    />
 
     <!-- Favorites -->
     <div v-if="favorites?.length">
-      <h2 class="font-semibold mb-2 text-sm">{{ t('add.favorites') }}</h2>
+      <h2 class="font-semibold mb-2 text-sm">
+        {{ t('add.favorites') }}
+      </h2>
       <div class="space-y-2">
         <div
           v-for="fav in favorites"
           :key="fav.id"
           class="flex items-center gap-3 p-3 rounded-xl border border-[var(--ui-border)]"
         >
-          <UIcon name="i-lucide-heart" class="w-4 h-4 text-primary shrink-0" />
+          <UIcon
+            name="i-lucide-heart"
+            class="w-4 h-4 text-primary shrink-0"
+          />
           <div class="flex-1 min-w-0">
-            <p class="font-medium text-sm truncate">{{ fav.name }}</p>
+            <p class="font-medium text-sm truncate">
+              {{ fav.name }}
+            </p>
             <p class="text-xs text-[var(--ui-text-muted)]">
               {{ Math.round(fav.totalCalories) }} kcal · P {{ Math.round(fav.totalProtein) }}g
             </p>
           </div>
           <div class="flex gap-1 shrink-0">
-            <UButton size="xs" icon="i-lucide-plus" @click="addFavoriteToJournal(fav)" />
-            <UButton size="xs" variant="ghost" color="error" icon="i-lucide-trash-2" @click="deleteFavorite(fav.id)" />
+            <UButton
+              size="xs"
+              icon="i-lucide-plus"
+              @click="addFavoriteToJournal(fav)"
+            />
+            <UButton
+              size="xs"
+              variant="ghost"
+              color="error"
+              icon="i-lucide-trash-2"
+              @click="deleteFavorite(fav.id)"
+            />
           </div>
         </div>
       </div>

@@ -15,7 +15,7 @@ Une alternative open source et gratuite à Foodvisor / MyFitnessPal. Trois faço
 | Auth | **nuxt-auth-utils** (session-based) |
 | PWA | **@vite-pwa/nuxt** |
 | Styling | **Nuxt UI v4** + Tailwind v4 |
-| Barcode | **ZXing (WASM)** |
+| Barcode | **BarcodeDetector API** (natif, ZXing en fallback) |
 | Food data | **OpenFoodFacts API** |
 | Containerisation | **Docker** + **Docker Compose** |
 
@@ -29,7 +29,6 @@ L'utilisateur choisit son provider dans les settings et fournit sa propre clé A
 |----------|--------------------|-----------|
 | **Google Gemini** (défaut) | gemini-2.0-flash | ✅ 250 req/jour |
 | **OpenRouter** | Au choix | ✅ Certains modèles gratuits |
-| **Ollama** | llava | ✅ 100% local |
 | **OpenAI** | gpt-4o | ❌ Payant |
 | **Anthropic** | claude-sonnet-4-6 | ❌ Payant |
 
@@ -55,7 +54,7 @@ L'utilisateur choisit son provider dans les settings et fournit sa propre clé A
 - [x] **Dashboard journalier** — totaux calories/protéines/glucides/lipides
 - [x] **Objectifs personnalisables** — cibles quotidiennes
 - [x] **Historique** — vue des jours passés
-- [x] **Multi-provider AI** — Gemini / OpenRouter / Ollama / OpenAI / Anthropic
+- [x] **Multi-provider AI** — Gemini / OpenRouter / OpenAI / Anthropic
 - [x] **Auth email/password**
 - [ ] **OAuth** — Google, GitHub (nuxt-auth-utils installé)
 - [x] **PWA** — installable sur mobile, accès caméra natif
@@ -106,18 +105,23 @@ pnpm dev
 ## Variables d'environnement
 
 ```bash
+# App URL (requis en production pour les emails de reset)
+APP_URL=https://yourdomain.com
+
 # Database
 DATABASE_URL=postgresql://scantrition:scantrition@db:5432/scantrition
 
 # Auth — générer avec : openssl rand -base64 32
 NUXT_SESSION_PASSWORD=change-me-to-a-random-32-char-string-minimum
 
+# Email (requis pour la réinitialisation de mot de passe)
+RESEND_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxx
+
 # AI Providers (les utilisateurs peuvent aussi configurer leurs clés via l'UI)
 GEMINI_API_KEY=
 OPENROUTER_API_KEY=
 OPENAI_API_KEY=
 ANTHROPIC_API_KEY=
-OLLAMA_BASE_URL=http://localhost:11434
 ```
 
 ---

@@ -2,7 +2,7 @@
 import type { NutritionResult } from '~/server/utils/ai'
 
 const props = defineProps<{
-  result: NutritionResult & { productName?: string; brand?: string; image?: string }
+  result: NutritionResult & { productName?: string, brand?: string, image?: string }
   loading?: boolean
 }>()
 
@@ -42,7 +42,9 @@ async function saveAsFavorite() {
   <UCard class="mt-4">
     <template #header>
       <div class="flex items-center justify-between">
-        <p class="font-semibold">{{ t('add.aiAnalysis') }}</p>
+        <p class="font-semibold">
+          {{ t('add.aiAnalysis') }}
+        </p>
         <div class="flex items-center gap-2">
           <UButton
             size="xs"
@@ -66,14 +68,21 @@ async function saveAsFavorite() {
     </template>
 
     <!-- Favorite form -->
-    <div v-if="showFavoriteForm" class="mb-4 flex gap-2">
+    <div
+      v-if="showFavoriteForm"
+      class="mb-4 flex gap-2"
+    >
       <UInput
         v-model="favoriteName"
         :placeholder="t('favorites.namePlaceholder')"
         class="flex-1"
         @keydown.enter="saveAsFavorite"
       />
-      <UButton :loading="savingFavorite" size="sm" @click="saveAsFavorite">
+      <UButton
+        :loading="savingFavorite"
+        size="sm"
+        @click="saveAsFavorite"
+      >
         {{ t('favorites.confirm') }}
       </UButton>
     </div>
@@ -105,20 +114,36 @@ async function saveAsFavorite() {
     <div class="border-t border-[var(--ui-border)] pt-3">
       <div class="grid grid-cols-4 gap-2 text-center">
         <div>
-          <p class="text-lg font-bold text-primary">{{ Math.round(result.totalCalories) }}</p>
-          <p class="text-xs text-[var(--ui-text-muted)]">kcal</p>
+          <p class="text-lg font-bold text-primary">
+            {{ Math.round(result.totalCalories) }}
+          </p>
+          <p class="text-xs text-[var(--ui-text-muted)]">
+            kcal
+          </p>
         </div>
         <div>
-          <p class="text-lg font-bold">{{ Math.round(result.totalProtein) }}g</p>
-          <p class="text-xs text-[var(--ui-text-muted)]">{{ t('dashboard.protein') }}</p>
+          <p class="text-lg font-bold">
+            {{ Math.round(result.totalProtein) }}g
+          </p>
+          <p class="text-xs text-[var(--ui-text-muted)]">
+            {{ t('dashboard.protein') }}
+          </p>
         </div>
         <div>
-          <p class="text-lg font-bold">{{ Math.round(result.totalCarbs) }}g</p>
-          <p class="text-xs text-[var(--ui-text-muted)]">{{ t('dashboard.carbs') }}</p>
+          <p class="text-lg font-bold">
+            {{ Math.round(result.totalCarbs) }}g
+          </p>
+          <p class="text-xs text-[var(--ui-text-muted)]">
+            {{ t('dashboard.carbs') }}
+          </p>
         </div>
         <div>
-          <p class="text-lg font-bold">{{ Math.round(result.totalFat) }}g</p>
-          <p class="text-xs text-[var(--ui-text-muted)]">{{ t('dashboard.fat') }}</p>
+          <p class="text-lg font-bold">
+            {{ Math.round(result.totalFat) }}g
+          </p>
+          <p class="text-xs text-[var(--ui-text-muted)]">
+            {{ t('dashboard.fat') }}
+          </p>
         </div>
       </div>
     </div>

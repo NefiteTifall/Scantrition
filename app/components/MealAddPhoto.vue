@@ -76,7 +76,11 @@ function reset() {
       v-if="preview"
       class="relative rounded-xl overflow-hidden bg-[var(--ui-border)]"
     >
-      <img :src="preview" alt="meal photo" class="w-full max-h-72 object-contain">
+      <img
+        :src="preview"
+        alt="meal photo"
+        class="w-full max-h-72 object-contain"
+      >
       <UButton
         icon="i-lucide-x"
         variant="solid"
@@ -93,14 +97,24 @@ function reset() {
       class="border-2 border-dashed border-[var(--ui-border)] rounded-xl p-8 flex flex-col items-center gap-3 cursor-pointer hover:border-primary transition-colors"
       @click="triggerUpload"
     >
-      <UIcon name="i-lucide-camera" class="w-10 h-10 text-[var(--ui-text-muted)]" />
+      <UIcon
+        name="i-lucide-camera"
+        class="w-10 h-10 text-[var(--ui-text-muted)]"
+      />
       <div class="text-center">
-        <p class="font-medium">{{ t('add.takePhoto') }}</p>
-        <p class="text-sm text-[var(--ui-text-muted)]">{{ t('add.orUpload') }}</p>
+        <p class="font-medium">
+          {{ t('add.takePhoto') }}
+        </p>
+        <p class="text-sm text-[var(--ui-text-muted)]">
+          {{ t('add.orUpload') }}
+        </p>
       </div>
     </div>
 
-    <div v-if="preview" class="flex gap-2">
+    <div
+      v-if="preview"
+      class="flex gap-2"
+    >
       <UButton
         variant="outline"
         color="neutral"

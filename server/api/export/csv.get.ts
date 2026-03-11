@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
 
   const lines = [
     headers.join(','),
-    ...rows.map(m => {
+    ...rows.map((m) => {
       const time = new Date(m.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
       const itemsStr = m.items.map(i => `${i.name} (${i.quantity})`).join(' + ')
       return [

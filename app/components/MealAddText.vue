@@ -42,8 +42,8 @@ function onAdd(r: NutritionResult) {
       :rows="4"
       :disabled="loading"
       autoresize
-      @keydown.ctrl.enter="analyze"
       class="w-full"
+      @keydown.ctrl.enter="analyze"
     />
 
     <UButton

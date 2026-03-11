@@ -18,7 +18,7 @@ export async function createMCPSession(userId: string, protocolVersion: string):
   return id
 }
 
-export async function getMCPSession(id: string): Promise<{ userId: string; protocolVersion: string } | null> {
+export async function getMCPSession(id: string): Promise<{ userId: string, protocolVersion: string } | null> {
   const session = await db.query.mcpSessions.findFirst({
     where: and(
       eq(mcpSessions.id, id),

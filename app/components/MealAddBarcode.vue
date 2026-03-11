@@ -7,7 +7,7 @@ const { t } = useI18n()
 const videoRef = ref<HTMLVideoElement>()
 const scanning = ref(false)
 const scannedCode = ref<string | null>(null)
-const result = ref<(NutritionResult & { productName?: string; brand?: string; image?: string }) | null>(null)
+const result = ref<(NutritionResult & { productName?: string, brand?: string, image?: string }) | null>(null)
 const error = ref('')
 const loading = ref(false)
 
@@ -80,7 +80,10 @@ async function handleCode(code: string) {
 }
 
 function stopStream() {
-  if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null }
+  if (animFrameId) {
+    cancelAnimationFrame(animFrameId)
+    animFrameId = null
+  }
   zxingControls?.stop()
   zxingControls = null
   stream?.getTracks().forEach(t => t.stop())
@@ -118,12 +121,22 @@ onUnmounted(stopStream)
       v-if="scanning"
       class="relative rounded-xl overflow-hidden bg-black"
     >
-      <video ref="videoRef" class="w-full max-h-72 object-cover" muted playsinline />
+      <video
+        ref="videoRef"
+        class="w-full max-h-72 object-cover"
+        muted
+        playsinline
+      />
       <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div class="w-48 h-32 border-2 border-primary rounded-lg opacity-80" />
       </div>
       <div class="absolute bottom-3 left-0 right-0 text-center">
-        <UBadge color="primary" variant="solid">{{ t('add.barcodeScanning') }}</UBadge>
+        <UBadge
+          color="primary"
+          variant="solid"
+        >
+          {{ t('add.barcodeScanning') }}
+        </UBadge>
       </div>
     </div>
 
@@ -133,10 +146,17 @@ onUnmounted(stopStream)
       class="border-2 border-dashed border-[var(--ui-border)] rounded-xl p-8 flex flex-col items-center gap-3 cursor-pointer hover:border-primary transition-colors"
       @click="startScan"
     >
-      <UIcon name="i-lucide-scan-barcode" class="w-10 h-10 text-[var(--ui-text-muted)]" />
+      <UIcon
+        name="i-lucide-scan-barcode"
+        class="w-10 h-10 text-[var(--ui-text-muted)]"
+      />
       <div class="text-center">
-        <p class="font-medium">{{ t('add.scanBarcode') }}</p>
-        <p class="text-sm text-[var(--ui-text-muted)]">{{ t('add.barcodePermission') }}</p>
+        <p class="font-medium">
+          {{ t('add.scanBarcode') }}
+        </p>
+        <p class="text-sm text-[var(--ui-text-muted)]">
+          {{ t('add.barcodePermission') }}
+        </p>
       </div>
     </div>
 
@@ -162,8 +182,14 @@ onUnmounted(stopStream)
       {{ t('add.scanAgain') }}
     </UButton>
 
-    <div v-if="loading" class="text-center py-4 text-[var(--ui-text-muted)]">
-      <UIcon name="i-lucide-loader-circle" class="w-6 h-6 animate-spin mx-auto mb-1" />
+    <div
+      v-if="loading"
+      class="text-center py-4 text-[var(--ui-text-muted)]"
+    >
+      <UIcon
+        name="i-lucide-loader-circle"
+        class="w-6 h-6 animate-spin mx-auto mb-1"
+      />
       {{ t('common.loading') }}
     </div>
 

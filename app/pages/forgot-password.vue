@@ -37,11 +37,26 @@ async function submit(event: FormSubmitEvent<{ email: string }>) {
 
 <template>
   <div class="min-h-screen flex items-center justify-center px-4 py-12 bg-[var(--ui-bg)]">
-    <div v-if="sent" class="w-full max-w-sm text-center space-y-4">
-      <UIcon name="i-lucide-mail-check" class="w-14 h-14 mx-auto text-primary" />
-      <h2 class="text-xl font-bold">{{ t('auth.resetEmailSent') }}</h2>
-      <p class="text-sm text-[var(--ui-text-muted)]">{{ t('auth.resetEmailSentDesc') }}</p>
-      <UButton to="/login" variant="outline" color="neutral" block>
+    <div
+      v-if="sent"
+      class="w-full max-w-sm text-center space-y-4"
+    >
+      <UIcon
+        name="i-lucide-mail-check"
+        class="w-14 h-14 mx-auto text-primary"
+      />
+      <h2 class="text-xl font-bold">
+        {{ t('auth.resetEmailSent') }}
+      </h2>
+      <p class="text-sm text-[var(--ui-text-muted)]">
+        {{ t('auth.resetEmailSentDesc') }}
+      </p>
+      <UButton
+        to="/login"
+        variant="outline"
+        color="neutral"
+        block
+      >
         {{ t('auth.backToLogin') }}
       </UButton>
     </div>
@@ -68,7 +83,10 @@ async function submit(event: FormSubmitEvent<{ email: string }>) {
       </template>
       <template #footer>
         <p class="text-center text-sm text-[var(--ui-text-muted)]">
-          <NuxtLink to="/login" class="text-primary font-medium hover:underline">
+          <NuxtLink
+            to="/login"
+            class="text-primary font-medium hover:underline"
+          >
             {{ t('auth.backToLogin') }}
           </NuxtLink>
         </p>

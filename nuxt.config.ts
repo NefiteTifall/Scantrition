@@ -21,6 +21,23 @@ export default defineNuxtConfig({
     '/register': { prerender: true }
   },
 
+  compatibilityDate: '2025-01-15',
+
+  vite: {
+    server: {
+      allowedHosts: ['scantrition.nguillaume.fr']
+    }
+  },
+
+  eslint: {
+    config: {
+      stylistic: {
+        commaDangle: 'never',
+        braceStyle: '1tbs'
+      }
+    }
+  },
+
   i18n: {
     locales: [
       { code: 'fr', name: 'Français', file: 'fr.json' },
@@ -46,23 +63,6 @@ export default defineNuxtConfig({
     },
     devOptions: {
       enabled: false
-    }
-  },
-
-  vite: {
-    server: {
-      allowedHosts: ['scantrition.nguillaume.fr']
-    }
-  },
-
-  compatibilityDate: '2025-01-15',
-
-  eslint: {
-    config: {
-      stylistic: {
-        commaDangle: 'never',
-        braceStyle: '1tbs'
-      }
     }
   }
 })

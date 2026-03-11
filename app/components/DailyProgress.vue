@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const props = defineProps<{
-  consumed: { calories: number; protein: number; carbs: number; fat: number }
-  goals: { calories: number; protein: number; carbs: number; fat: number }
+  consumed: { calories: number, protein: number, carbs: number, fat: number }
+  goals: { calories: number, protein: number, carbs: number, fat: number }
 }>()
 
 const { t } = useI18n()
@@ -41,7 +41,11 @@ const macros = computed(() => [
 
     <!-- Macro rows -->
     <div class="space-y-2">
-      <div v-for="macro in macros" :key="macro.key" class="flex items-center gap-3">
+      <div
+        v-for="macro in macros"
+        :key="macro.key"
+        class="flex items-center gap-3"
+      >
         <span class="text-xs text-[var(--ui-text-muted)] w-16 shrink-0">{{ macro.label }}</span>
         <div class="flex-1 bg-[var(--ui-border)] rounded-full h-1.5 overflow-hidden">
           <div
