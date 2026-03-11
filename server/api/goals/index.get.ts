@@ -3,7 +3,7 @@ import { userGoals } from '../../db/schema'
 import { eq } from 'drizzle-orm'
 
 export default defineEventHandler(async (event) => {
-  const session = await requireUserSession(event)
+  const session = await requireSession(event)
 
   let goals = await db.query.userGoals.findFirst({
     where: eq(userGoals.userId, session.user.id)

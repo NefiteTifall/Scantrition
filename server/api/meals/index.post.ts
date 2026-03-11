@@ -2,7 +2,7 @@ import { db } from '../../db'
 import { meals } from '../../db/schema'
 
 export default defineEventHandler(async (event) => {
-  const session = await requireUserSession(event)
+  const session = await requireSession(event)
   const body = await readBody(event)
 
   if (!body.date || !body.type || !body.items) {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { FormSubmitEvent } from '@nuxt/ui'
+import type { FormSubmitEvent, AuthFormField } from '@nuxt/ui'
 
 const { t } = useI18n()
 const { fetch: refreshSession } = useUserSession()
@@ -87,7 +87,10 @@ async function register(event: FormSubmitEvent<{ email: string, password: string
       <template #footer>
         <p class="text-center text-sm text-[var(--ui-text-muted)]">
           {{ t('auth.hasAccount') }}
-          <NuxtLink to="/login" class="text-primary font-medium hover:underline ml-1">
+          <NuxtLink
+            to="/login"
+            class="text-primary font-medium hover:underline ml-1"
+          >
             {{ t('auth.loginHere') }}
           </NuxtLink>
         </p>

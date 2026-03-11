@@ -33,8 +33,8 @@ export function extractProviderError(err: unknown, provider: string): string {
   if (!(err instanceof Error)) return `Erreur ${provider} inconnue`
 
   const data = (err as { data?: unknown }).data as Record<string, unknown> | undefined
-  const statusCode = (err as { statusCode?: number; status?: number }).statusCode
-    ?? (err as { statusCode?: number; status?: number }).status
+  const statusCode = (err as { statusCode?: number, status?: number }).statusCode
+    ?? (err as { statusCode?: number, status?: number }).status
     ?? 0
 
   let bodyMsg = ''
@@ -118,9 +118,9 @@ class GeminiProvider implements AIProvider {
 
   async analyzeImage(imageBase64: string, mimeType: string): Promise<NutritionResult> {
     const model = this.genAI.getGenerativeModel({ model: this.model })
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const result = await model.generateContent([
-      { inlineData: { mimeType: mimeType as any, data: imageBase64 } },
+      { inlineData: { mimeType: mimeType as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif', data: imageBase64 } },
       { text: PHOTO_PROMPT }
     ])
     return parseNutritionJSON(result.response.text())
@@ -142,7 +142,7 @@ class OpenAIProvider implements AIProvider {
       'https://api.openai.com/v1/chat/completions',
       {
         method: 'POST',
-        headers: { Authorization: `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' },
+        headers: { 'Authorization': `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' },
         body: {
           model: this.model,
           messages: [{ role: 'user', content: TEXT_PROMPT(description) }],
@@ -150,7 +150,7 @@ class OpenAIProvider implements AIProvider {
         }
       }
     )
-    return parseNutritionJSON(res.choices[0].message.content)
+    return parseNutritionJSON(res.choices[0]?.message?.content ?? '')
   }
 
   async analyzeImage(imageBase64: string, mimeType: string): Promise<NutritionResult> {
@@ -158,7 +158,7 @@ class OpenAIProvider implements AIProvider {
       'https://api.openai.com/v1/chat/completions',
       {
         method: 'POST',
-        headers: { Authorization: `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' },
+        headers: { 'Authorization': `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' },
         body: {
           model: this.model,
           messages: [{
@@ -172,7 +172,7 @@ class OpenAIProvider implements AIProvider {
         }
       }
     )
-    return parseNutritionJSON(res.choices[0].message.content)
+    return parseNutritionJSON(res.choices[0]?.message?.content ?? '')
   }
 
   async generateText(prompt: string): Promise<string> {
@@ -180,11 +180,11 @@ class OpenAIProvider implements AIProvider {
       'https://api.openai.com/v1/chat/completions',
       {
         method: 'POST',
-        headers: { Authorization: `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' },
+        headers: { 'Authorization': `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' },
         body: { model: this.model, messages: [{ role: 'user', content: prompt }], max_tokens: 1024 }
       }
     )
-    return res.choices[0].message.content
+    return res.choices[0]?.message?.content ?? ''
   }
 }
 
@@ -209,7 +209,7 @@ class AnthropicProvider implements AIProvider {
         }
       }
     )
-    return parseNutritionJSON(res.content[0].text)
+    return parseNutritionJSON(res.content[0]?.text ?? '')
   }
 
   async analyzeImage(imageBase64: string, mimeType: string): Promise<NutritionResult> {
@@ -235,7 +235,7 @@ class AnthropicProvider implements AIProvider {
         }
       }
     )
-    return parseNutritionJSON(res.content[0].text)
+    return parseNutritionJSON(res.content[0]?.text ?? '')
   }
 
   async generateText(prompt: string): Promise<string> {
@@ -247,7 +247,7 @@ class AnthropicProvider implements AIProvider {
         body: { model: this.model, max_tokens: 1024, messages: [{ role: 'user', content: prompt }] }
       }
     )
-    return res.content[0].text
+    return res.content[0]?.text ?? ''
   }
 }
 
@@ -260,14 +260,14 @@ class OpenRouterProvider implements AIProvider {
       'https://openrouter.ai/api/v1/chat/completions',
       {
         method: 'POST',
-        headers: { Authorization: `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' },
+        headers: { 'Authorization': `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' },
         body: {
           model: this.model,
           messages: [{ role: 'user', content: TEXT_PROMPT(description) }]
         }
       }
     )
-    return parseNutritionJSON(res.choices[0].message.content)
+    return parseNutritionJSON(res.choices[0]?.message?.content ?? '')
   }
 
   async analyzeImage(imageBase64: string, mimeType: string): Promise<NutritionResult> {
@@ -275,7 +275,7 @@ class OpenRouterProvider implements AIProvider {
       'https://openrouter.ai/api/v1/chat/completions',
       {
         method: 'POST',
-        headers: { Authorization: `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' },
+        headers: { 'Authorization': `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' },
         body: {
           model: this.model,
           messages: [{
@@ -288,7 +288,7 @@ class OpenRouterProvider implements AIProvider {
         }
       }
     )
-    return parseNutritionJSON(res.choices[0].message.content)
+    return parseNutritionJSON(res.choices[0]?.message?.content ?? '')
   }
 
   async generateText(prompt: string): Promise<string> {
@@ -296,11 +296,11 @@ class OpenRouterProvider implements AIProvider {
       'https://openrouter.ai/api/v1/chat/completions',
       {
         method: 'POST',
-        headers: { Authorization: `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' },
+        headers: { 'Authorization': `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' },
         body: { model: this.model, messages: [{ role: 'user', content: prompt }] }
       }
     )
-    return res.choices[0].message.content
+    return res.choices[0]?.message?.content ?? ''
   }
 }
 

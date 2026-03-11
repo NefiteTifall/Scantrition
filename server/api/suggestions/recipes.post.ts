@@ -13,7 +13,7 @@ export interface RecipeSuggestion {
 }
 
 export default defineEventHandler(async (event) => {
-  const session = await requireUserSession(event)
+  const session = await requireSession(event)
   const today = new Date().toISOString().split('T')[0]
 
   const [goals, [consumed]] = await Promise.all([
@@ -30,11 +30,12 @@ export default defineEventHandler(async (event) => {
   ])
 
   const g = goals ?? { calories: 2000, protein: 150, carbs: 250, fat: 70 }
+  const c = consumed ?? { calories: 0, protein: 0, carbs: 0, fat: 0 }
   const remaining = {
-    calories: Math.max(0, Math.round(g.calories - consumed.calories)),
-    protein: Math.max(0, Math.round(g.protein - consumed.protein)),
-    carbs: Math.max(0, Math.round(g.carbs - consumed.carbs)),
-    fat: Math.max(0, Math.round(g.fat - consumed.fat))
+    calories: Math.max(0, Math.round(g.calories - c.calories)),
+    protein: Math.max(0, Math.round(g.protein - c.protein)),
+    carbs: Math.max(0, Math.round(g.carbs - c.carbs)),
+    fat: Math.max(0, Math.round(g.fat - c.fat))
   }
 
   const prompt = `You are a nutrition assistant. Suggest 3 concrete meal ideas based on these remaining daily nutrition goals:

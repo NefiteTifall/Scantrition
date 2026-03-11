@@ -3,7 +3,7 @@ import { meals } from '../../db/schema'
 import { eq, asc } from 'drizzle-orm'
 
 export default defineEventHandler(async (event) => {
-  const session = await requireUserSession(event)
+  const session = await requireSession(event)
 
   const rows = await db.query.meals.findMany({
     where: eq(meals.userId, session.user.id),
@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
 
   const lines = [
     headers.join(','),
-    ...rows.map(m => {
+    ...rows.map((m) => {
       const time = new Date(m.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
       const itemsStr = m.items.map(i => `${i.name} (${i.quantity})`).join(' + ')
       return [

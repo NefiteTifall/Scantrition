@@ -41,7 +41,7 @@ const hasApiKey = ref(aiData.value?.hasApiKey ?? false)
 const apiKey = ref('')
 const savingAI = ref(false)
 const validating = ref(false)
-const validationResult = ref<{ valid: boolean; error?: string } | null>(null)
+const validationResult = ref<{ valid: boolean, error?: string } | null>(null)
 
 const providers = [
   { label: 'Google Gemini', value: 'gemini' },
@@ -50,7 +50,7 @@ const providers = [
   { label: 'OpenRouter', value: 'openrouter' }
 ]
 
-const apiKeyLinks: Record<string, { url: string; label: string; quotaUrl?: string }> = {
+const apiKeyLinks: Record<string, { url: string, label: string, quotaUrl?: string }> = {
   gemini: { url: 'https://aistudio.google.com/app/apikey', label: 'Google AI Studio', quotaUrl: 'https://aistudio.google.com/rate-limit' },
   openai: { url: 'https://platform.openai.com/api-keys', label: 'OpenAI Platform' },
   anthropic: { url: 'https://console.anthropic.com/settings/keys', label: 'Anthropic Console' },
@@ -59,7 +59,7 @@ const apiKeyLinks: Record<string, { url: string; label: string; quotaUrl?: strin
 
 const currentApiKeyLink = computed(() => apiKeyLinks[ai.provider] ?? null)
 
-const GEMINI_FREE_MODELS = new Map<string, { rpm: number; rpd: number }>([
+const GEMINI_FREE_MODELS = new Map<string, { rpm: number, rpd: number }>([
   ['gemini-3.1-flash-lite-preview', { rpm: 15, rpd: 500 }],
   ['gemini-2.5-flash-lite', { rpm: 10, rpd: 20 }],
   ['gemini-2.5-flash', { rpm: 5, rpd: 20 }],
@@ -67,7 +67,7 @@ const GEMINI_FREE_MODELS = new Map<string, { rpm: number; rpd: number }>([
 ])
 
 // Models
-interface ModelItem { label: string; value: string; quota?: { rpm: number; rpd: number } }
+interface ModelItem { label: string, value: string, quota?: { rpm: number, rpd: number } }
 const models = ref<ModelItem[]>([])
 const modelsLoading = ref(false)
 
@@ -132,7 +132,7 @@ async function validateAI() {
   validating.value = true
   validationResult.value = null
   try {
-    const result = await $fetch<{ valid: boolean; error?: string }>('/api/settings/ai/validate', { method: 'POST' })
+    const result = await $fetch<{ valid: boolean, error?: string }>('/api/settings/ai/validate', { method: 'POST' })
     validationResult.value = result
     if (result.valid) {
       isAIConfigured.value = true
@@ -149,7 +149,7 @@ async function validateAI() {
 }
 
 const availableLocales = computed(() =>
-  (locales.value as Array<{ code: string; name: string }>).map(l => ({
+  (locales.value as Array<{ code: string, name: string }>).map(l => ({
     label: l.name,
     value: l.code
   }))
@@ -198,7 +198,9 @@ async function revokeApiKey(id: string) {
 async function copyKey(key: string) {
   await navigator.clipboard.writeText(key)
   copied.value = true
-  setTimeout(() => { copied.value = false }, 2000)
+  setTimeout(() => {
+    copied.value = false
+  }, 2000)
 }
 
 function formatLastUsed(dateStr: string | null) {
@@ -218,7 +220,9 @@ const mcpConfig = computed(() => JSON.stringify({
 
 <template>
   <div class="max-w-xl mx-auto px-4 py-6 space-y-6">
-    <h1 class="text-xl font-bold">{{ t('settings.title') }}</h1>
+    <h1 class="text-xl font-bold">
+      {{ t('settings.title') }}
+    </h1>
 
     <!-- Setup required banner -->
     <UAlert
@@ -234,28 +238,77 @@ const mcpConfig = computed(() => JSON.stringify({
     <UCard>
       <template #header>
         <div>
-          <p class="font-semibold">{{ t('settings.goalsTitle') }}</p>
-          <p class="text-sm text-[var(--ui-text-muted)]">{{ t('settings.goalsSubtitle') }}</p>
+          <p class="font-semibold">
+            {{ t('settings.goalsTitle') }}
+          </p>
+          <p class="text-sm text-[var(--ui-text-muted)]">
+            {{ t('settings.goalsSubtitle') }}
+          </p>
         </div>
       </template>
 
-      <UForm :state="goals" class="space-y-4" @submit="saveGoals">
+      <UForm
+        :state="goals"
+        class="space-y-4"
+        @submit="saveGoals"
+      >
         <div class="grid grid-cols-2 gap-3">
-          <UFormField :label="t('settings.caloriesGoal')" name="calories">
-            <UInput v-model.number="goals.calories" type="number" min="500" max="10000" class="w-full" />
+          <UFormField
+            :label="t('settings.caloriesGoal')"
+            name="calories"
+          >
+            <UInput
+              v-model.number="goals.calories"
+              type="number"
+              min="500"
+              max="10000"
+              class="w-full"
+            />
           </UFormField>
-          <UFormField :label="t('settings.proteinGoal')" name="protein">
-            <UInput v-model.number="goals.protein" type="number" min="0" max="500" class="w-full" />
+          <UFormField
+            :label="t('settings.proteinGoal')"
+            name="protein"
+          >
+            <UInput
+              v-model.number="goals.protein"
+              type="number"
+              min="0"
+              max="500"
+              class="w-full"
+            />
           </UFormField>
-          <UFormField :label="t('settings.carbsGoal')" name="carbs">
-            <UInput v-model.number="goals.carbs" type="number" min="0" max="1000" class="w-full" />
+          <UFormField
+            :label="t('settings.carbsGoal')"
+            name="carbs"
+          >
+            <UInput
+              v-model.number="goals.carbs"
+              type="number"
+              min="0"
+              max="1000"
+              class="w-full"
+            />
           </UFormField>
-          <UFormField :label="t('settings.fatGoal')" name="fat">
-            <UInput v-model.number="goals.fat" type="number" min="0" max="300" class="w-full" />
+          <UFormField
+            :label="t('settings.fatGoal')"
+            name="fat"
+          >
+            <UInput
+              v-model.number="goals.fat"
+              type="number"
+              min="0"
+              max="300"
+              class="w-full"
+            />
           </UFormField>
         </div>
 
-        <UButton type="submit" block :loading="savingGoals" icon="i-lucide-target">
+        <UButton
+          type="submit"
+          block
+          :loading="savingGoals"
+          icon="i-lucide-target"
+        >
           {{ t('settings.saveGoals') }}
         </UButton>
       </UForm>
@@ -265,26 +318,51 @@ const mcpConfig = computed(() => JSON.stringify({
     <UCard>
       <template #header>
         <div>
-          <p class="font-semibold">{{ t('settings.aiTitle') }}</p>
-          <p class="text-sm text-[var(--ui-text-muted)]">{{ t('settings.aiSubtitle') }}</p>
+          <p class="font-semibold">
+            {{ t('settings.aiTitle') }}
+          </p>
+          <p class="text-sm text-[var(--ui-text-muted)]">
+            {{ t('settings.aiSubtitle') }}
+          </p>
         </div>
       </template>
 
-      <UForm :state="ai" class="space-y-4" @submit="saveAI">
-        <UFormField :label="t('settings.provider')" name="provider">
-          <USelect v-model="ai.provider" :items="providers" value-key="value" class="w-full" />
+      <UForm
+        :state="ai"
+        class="space-y-4"
+        @submit="saveAI"
+      >
+        <UFormField
+          :label="t('settings.provider')"
+          name="provider"
+        >
+          <USelect
+            v-model="ai.provider"
+            :items="providers"
+            value-key="value"
+            class="w-full"
+          />
         </UFormField>
 
-        <div v-if="currentApiKeyLink" class="flex items-center gap-3 -mt-2">
+        <div
+          v-if="currentApiKeyLink"
+          class="flex items-center gap-3 -mt-2"
+        >
           <a
             :href="currentApiKeyLink.url"
             target="_blank"
             rel="noopener noreferrer"
             class="flex items-center gap-1 text-xs text-primary hover:underline"
           >
-            <UIcon name="i-lucide-key-round" class="w-3.5 h-3.5" />
+            <UIcon
+              name="i-lucide-key-round"
+              class="w-3.5 h-3.5"
+            />
             {{ t('settings.getApiKey', { provider: currentApiKeyLink.label }) }}
-            <UIcon name="i-lucide-external-link" class="w-3 h-3 opacity-60" />
+            <UIcon
+              name="i-lucide-external-link"
+              class="w-3 h-3 opacity-60"
+            />
           </a>
           <a
             v-if="currentApiKeyLink.quotaUrl"
@@ -293,16 +371,31 @@ const mcpConfig = computed(() => JSON.stringify({
             rel="noopener noreferrer"
             class="flex items-center gap-1 text-xs text-[var(--ui-text-muted)] hover:underline"
           >
-            <UIcon name="i-lucide-gauge" class="w-3.5 h-3.5" />
+            <UIcon
+              name="i-lucide-gauge"
+              class="w-3.5 h-3.5"
+            />
             {{ t('settings.viewQuotas') }}
-            <UIcon name="i-lucide-external-link" class="w-3 h-3 opacity-60" />
+            <UIcon
+              name="i-lucide-external-link"
+              class="w-3 h-3 opacity-60"
+            />
           </a>
         </div>
 
-        <UFormField :label="t('settings.apiKey')" name="apiKey">
+        <UFormField
+          :label="t('settings.apiKey')"
+          name="apiKey"
+        >
           <div class="space-y-1.5">
-            <div v-if="hasApiKey" class="flex items-center gap-1.5 text-xs text-success">
-              <UIcon name="i-lucide-check-circle" class="w-3.5 h-3.5" />
+            <div
+              v-if="hasApiKey"
+              class="flex items-center gap-1.5 text-xs text-success"
+            >
+              <UIcon
+                name="i-lucide-check-circle"
+                class="w-3.5 h-3.5"
+              />
               {{ t('settings.apiKeySet') }}
             </div>
             <UInput
@@ -314,7 +407,10 @@ const mcpConfig = computed(() => JSON.stringify({
           </div>
         </UFormField>
 
-        <UFormField :label="t('settings.model')" name="model">
+        <UFormField
+          :label="t('settings.model')"
+          name="model"
+        >
           <USelectMenu
             v-model="ai.model"
             :items="models"
@@ -326,15 +422,30 @@ const mcpConfig = computed(() => JSON.stringify({
           >
             <template #item="{ item }">
               <span class="flex-1 truncate">{{ item.label }}</span>
-              <span v-if="item.quota" class="text-xs text-[var(--ui-text-muted)] shrink-0">
+              <span
+                v-if="item.quota"
+                class="text-xs text-[var(--ui-text-muted)] shrink-0"
+              >
                 {{ item.quota.rpm }}/min · {{ item.quota.rpd }}/j
               </span>
-              <UBadge v-if="item.quota" color="success" variant="subtle" size="xs">Free</UBadge>
+              <UBadge
+                v-if="item.quota"
+                color="success"
+                variant="subtle"
+                size="xs"
+              >
+                Free
+              </UBadge>
             </template>
           </USelectMenu>
         </UFormField>
 
-        <UButton type="submit" block :loading="savingAI" icon="i-lucide-cpu">
+        <UButton
+          type="submit"
+          block
+          :loading="savingAI"
+          icon="i-lucide-cpu"
+        >
           {{ t('settings.saveAI') }}
         </UButton>
 
@@ -362,7 +473,9 @@ const mcpConfig = computed(() => JSON.stringify({
     <!-- Language -->
     <UCard>
       <template #header>
-        <p class="font-semibold">{{ t('settings.languageTitle') }}</p>
+        <p class="font-semibold">
+          {{ t('settings.languageTitle') }}
+        </p>
       </template>
 
       <div class="flex gap-2">
@@ -371,7 +484,7 @@ const mcpConfig = computed(() => JSON.stringify({
           :key="loc.value"
           :variant="locale === loc.value ? 'solid' : 'outline'"
           :color="locale === loc.value ? 'primary' : 'neutral'"
-          @click="setLocale(loc.value)"
+          @click="setLocale(loc.value as 'fr' | 'en')"
         >
           {{ loc.label }}
         </UButton>
@@ -382,8 +495,12 @@ const mcpConfig = computed(() => JSON.stringify({
     <UCard>
       <template #header>
         <div>
-          <p class="font-semibold">{{ t('apiKeys.title') }}</p>
-          <p class="text-sm text-[var(--ui-text-muted)]">{{ t('apiKeys.subtitle') }}</p>
+          <p class="font-semibold">
+            {{ t('apiKeys.title') }}
+          </p>
+          <p class="text-sm text-[var(--ui-text-muted)]">
+            {{ t('apiKeys.subtitle') }}
+          </p>
         </div>
       </template>
 
@@ -399,7 +516,11 @@ const mcpConfig = computed(() => JSON.stringify({
           <template #description>
             <div class="flex items-center gap-2 mt-1">
               <code class="text-xs bg-[var(--ui-bg)] px-2 py-1 rounded flex-1 truncate">{{ newKeyValue }}</code>
-              <UButton size="xs" :icon="copied ? 'i-lucide-check' : 'i-lucide-copy'" @click="copyKey(newKeyValue!)">
+              <UButton
+                size="xs"
+                :icon="copied ? 'i-lucide-check' : 'i-lucide-copy'"
+                @click="copyKey(newKeyValue!)"
+              >
                 {{ copied ? t('common.copied') : t('common.copy') }}
               </UButton>
             </div>
@@ -407,24 +528,44 @@ const mcpConfig = computed(() => JSON.stringify({
         </UAlert>
 
         <!-- Existing keys -->
-        <div v-if="apiKeys?.length" class="space-y-2">
+        <div
+          v-if="apiKeys?.length"
+          class="space-y-2"
+        >
           <div
             v-for="key in apiKeys"
             :key="key.id"
             class="flex items-center justify-between gap-3 p-3 rounded-xl border border-[var(--ui-border)]"
           >
             <div class="flex-1 min-w-0">
-              <p class="font-medium text-sm">{{ key.name }}</p>
-              <p class="text-xs text-[var(--ui-text-muted)] font-mono">{{ key.prefix }}…</p>
-              <p class="text-xs text-[var(--ui-text-muted)]">{{ t('apiKeys.lastUsed') }} : {{ formatLastUsed(key.lastUsedAt) }}</p>
+              <p class="font-medium text-sm">
+                {{ key.name }}
+              </p>
+              <p class="text-xs text-[var(--ui-text-muted)] font-mono">
+                {{ key.prefix }}…
+              </p>
+              <p class="text-xs text-[var(--ui-text-muted)]">
+                {{ t('apiKeys.lastUsed') }} : {{ formatLastUsed(key.lastUsedAt) }}
+              </p>
             </div>
-            <UButton size="xs" variant="ghost" color="error" icon="i-lucide-trash-2" @click="revokeApiKey(key.id)">
+            <UButton
+              size="xs"
+              variant="ghost"
+              color="error"
+              icon="i-lucide-trash-2"
+              @click="revokeApiKey(key.id)"
+            >
               {{ t('apiKeys.revoke') }}
             </UButton>
           </div>
         </div>
 
-        <p v-else-if="!newKeyValue" class="text-sm text-[var(--ui-text-muted)]">{{ t('apiKeys.noKeys') }}</p>
+        <p
+          v-else-if="!newKeyValue"
+          class="text-sm text-[var(--ui-text-muted)]"
+        >
+          {{ t('apiKeys.noKeys') }}
+        </p>
 
         <!-- Create new key -->
         <div class="flex gap-2">
@@ -434,7 +575,11 @@ const mcpConfig = computed(() => JSON.stringify({
             class="flex-1"
             @keydown.enter="createApiKey"
           />
-          <UButton :loading="creatingKey" icon="i-lucide-plus" @click="createApiKey">
+          <UButton
+            :loading="creatingKey"
+            icon="i-lucide-plus"
+            @click="createApiKey"
+          >
             {{ t('apiKeys.create') }}
           </UButton>
         </div>
@@ -445,14 +590,20 @@ const mcpConfig = computed(() => JSON.stringify({
     <UCard>
       <template #header>
         <div>
-          <p class="font-semibold">{{ t('mcp.title') }}</p>
-          <p class="text-sm text-[var(--ui-text-muted)]">{{ t('mcp.subtitle') }}</p>
+          <p class="font-semibold">
+            {{ t('mcp.title') }}
+          </p>
+          <p class="text-sm text-[var(--ui-text-muted)]">
+            {{ t('mcp.subtitle') }}
+          </p>
         </div>
       </template>
 
       <div class="space-y-4">
         <div>
-          <p class="text-sm font-medium mb-1">{{ t('mcp.endpoint') }}</p>
+          <p class="text-sm font-medium mb-1">
+            {{ t('mcp.endpoint') }}
+          </p>
           <code class="text-xs bg-[var(--ui-bg-elevated)] px-3 py-2 rounded-lg block truncate">{{ mcpEndpoint }}</code>
         </div>
 
@@ -465,8 +616,12 @@ const mcpConfig = computed(() => JSON.stringify({
         />
 
         <div>
-          <p class="text-sm font-medium mb-1">{{ t('mcp.configTitle') }}</p>
-          <p class="text-xs text-[var(--ui-text-muted)] mb-2">{{ t('mcp.configHint') }}</p>
+          <p class="text-sm font-medium mb-1">
+            {{ t('mcp.configTitle') }}
+          </p>
+          <p class="text-xs text-[var(--ui-text-muted)] mb-2">
+            {{ t('mcp.configHint') }}
+          </p>
           <pre class="text-xs bg-[var(--ui-bg-elevated)] px-3 py-2 rounded-lg overflow-x-auto">{{ mcpConfig }}</pre>
         </div>
       </div>

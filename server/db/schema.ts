@@ -33,7 +33,7 @@ export const meals = pgTable('meals', {
   confidence: real('confidence').default(1),
   source: text('source'),
   createdAt: timestamp('created_at').defaultNow().notNull()
-}, (t) => [
+}, t => [
   index('meals_user_date_idx').on(t.userId, t.date)
 ])
 

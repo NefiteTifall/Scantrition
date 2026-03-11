@@ -20,18 +20,37 @@ function exportCSV() {
 <template>
   <div class="max-w-xl mx-auto px-4 py-6 space-y-4">
     <div class="flex items-center justify-between">
-      <h1 class="text-xl font-bold">{{ t('history.title') }}</h1>
+      <h1 class="text-xl font-bold">
+        {{ t('history.title') }}
+      </h1>
       <div class="flex gap-2">
-        <UButton v-if="history?.length" size="sm" variant="outline" color="neutral" icon="i-lucide-trending-up" to="/trends">
+        <UButton
+          v-if="history?.length"
+          size="sm"
+          variant="outline"
+          color="neutral"
+          icon="i-lucide-trending-up"
+          to="/trends"
+        >
           {{ t('history.trends') }}
         </UButton>
-        <UButton v-if="history?.length" size="sm" variant="outline" color="neutral" icon="i-lucide-download" @click="exportCSV">
+        <UButton
+          v-if="history?.length"
+          size="sm"
+          variant="outline"
+          color="neutral"
+          icon="i-lucide-download"
+          @click="exportCSV"
+        >
           {{ t('history.export') }}
         </UButton>
       </div>
     </div>
 
-    <div v-if="history?.length" class="space-y-2">
+    <div
+      v-if="history?.length"
+      class="space-y-2"
+    >
       <NuxtLink
         v-for="day in history"
         :key="day.date"
@@ -59,9 +78,17 @@ function exportCSV() {
       </NuxtLink>
     </div>
 
-    <UCard v-else class="text-center py-10">
-      <UIcon name="i-lucide-calendar" class="w-10 h-10 mx-auto text-[var(--ui-text-muted)] mb-3" />
-      <p class="text-[var(--ui-text-muted)]">{{ t('history.noData') }}</p>
+    <UCard
+      v-else
+      class="text-center py-10"
+    >
+      <UIcon
+        name="i-lucide-calendar"
+        class="w-10 h-10 mx-auto text-[var(--ui-text-muted)] mb-3"
+      />
+      <p class="text-[var(--ui-text-muted)]">
+        {{ t('history.noData') }}
+      </p>
     </UCard>
   </div>
 </template>

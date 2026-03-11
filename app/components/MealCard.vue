@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { MealItem } from '~/server/db/schema'
+import type { MealItem } from '~/types/nutrition'
 
 type MealCategory = 'breakfast' | 'lunch' | 'snack' | 'dinner'
 
@@ -17,8 +17,8 @@ interface Meal {
   createdAt: string
 }
 
-const props = defineProps<{ meal: Meal; borderless?: boolean }>()
-const emit = defineEmits<{ delete: [id: string]; updated: [id: string] }>()
+const props = defineProps<{ meal: Meal, borderless?: boolean }>()
+const emit = defineEmits<{ delete: [id: string], updated: [id: string] }>()
 
 const { t } = useI18n()
 const toast = useToast()
@@ -38,7 +38,7 @@ const categoryIcon: Record<string, string> = {
   dinner: 'i-lucide-moon'
 }
 
-const mealCategories: Array<{ key: MealCategory; icon: string }> = [
+const mealCategories: Array<{ key: MealCategory, icon: string }> = [
   { key: 'breakfast', icon: 'i-lucide-sunrise' },
   { key: 'lunch', icon: 'i-lucide-sun' },
   { key: 'snack', icon: 'i-lucide-apple' },
@@ -93,12 +93,17 @@ async function saveEdit() {
   <UCard :ui="borderless ? { body: 'px-4 py-3', root: 'rounded-none shadow-none border-0 ring-0' } : undefined">
     <div class="flex items-start gap-3">
       <div class="mt-0.5 p-2 rounded-lg bg-[var(--ui-border)] shrink-0">
-        <UIcon :name="typeIcon[meal.type] ?? 'i-lucide-utensils'" class="w-4 h-4 text-[var(--ui-text-muted)]" />
+        <UIcon
+          :name="typeIcon[meal.type] ?? 'i-lucide-utensils'"
+          class="w-4 h-4 text-[var(--ui-text-muted)]"
+        />
       </div>
 
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-1.5">
-          <p class="font-medium truncate">{{ itemNames }}</p>
+          <p class="font-medium truncate">
+            {{ itemNames }}
+          </p>
           <UBadge
             v-if="meal.mealCategory"
             color="neutral"
@@ -106,7 +111,10 @@ async function saveEdit() {
             size="xs"
             class="shrink-0"
           >
-            <UIcon :name="categoryIcon[meal.mealCategory]" class="w-3 h-3 mr-0.5" />
+            <UIcon
+              :name="categoryIcon[meal.mealCategory]"
+              class="w-3 h-3 mr-0.5"
+            />
             {{ t(`mealCategory.${meal.mealCategory}`) }}
           </UBadge>
         </div>
@@ -148,11 +156,16 @@ async function saveEdit() {
   </UCard>
 
   <!-- Edit modal -->
-  <UModal v-model:open="showEdit" :title="t('edit.meal')">
+  <UModal
+    v-model:open="showEdit"
+    :title="t('edit.meal')"
+  >
     <template #body>
       <div class="space-y-3">
         <div>
-          <p class="text-sm font-medium mb-1.5">{{ t('mealCategory.label') }}</p>
+          <p class="text-sm font-medium mb-1.5">
+            {{ t('mealCategory.label') }}
+          </p>
           <div class="grid grid-cols-4 gap-1 bg-[var(--ui-border)] rounded-xl p-1">
             <button
               v-for="cat in mealCategories"
@@ -163,31 +176,78 @@ async function saveEdit() {
                 : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]'"
               @click="editForm.mealCategory = cat.key"
             >
-              <UIcon :name="cat.icon" class="w-4 h-4" />
+              <UIcon
+                :name="cat.icon"
+                class="w-4 h-4"
+              />
               {{ t(`mealCategory.${cat.key}`) }}
             </button>
           </div>
         </div>
-        <UFormField :label="t('edit.calories')" name="calories">
-          <UInput v-model.number="editForm.totalCalories" type="number" min="0" class="w-full" />
+        <UFormField
+          :label="t('edit.calories')"
+          name="calories"
+        >
+          <UInput
+            v-model.number="editForm.totalCalories"
+            type="number"
+            min="0"
+            class="w-full"
+          />
         </UFormField>
-        <UFormField :label="t('edit.protein')" name="protein">
-          <UInput v-model.number="editForm.totalProtein" type="number" min="0" step="0.1" class="w-full" />
+        <UFormField
+          :label="t('edit.protein')"
+          name="protein"
+        >
+          <UInput
+            v-model.number="editForm.totalProtein"
+            type="number"
+            min="0"
+            step="0.1"
+            class="w-full"
+          />
         </UFormField>
-        <UFormField :label="t('edit.carbs')" name="carbs">
-          <UInput v-model.number="editForm.totalCarbs" type="number" min="0" step="0.1" class="w-full" />
+        <UFormField
+          :label="t('edit.carbs')"
+          name="carbs"
+        >
+          <UInput
+            v-model.number="editForm.totalCarbs"
+            type="number"
+            min="0"
+            step="0.1"
+            class="w-full"
+          />
         </UFormField>
-        <UFormField :label="t('edit.fat')" name="fat">
-          <UInput v-model.number="editForm.totalFat" type="number" min="0" step="0.1" class="w-full" />
+        <UFormField
+          :label="t('edit.fat')"
+          name="fat"
+        >
+          <UInput
+            v-model.number="editForm.totalFat"
+            type="number"
+            min="0"
+            step="0.1"
+            class="w-full"
+          />
         </UFormField>
       </div>
     </template>
     <template #footer>
       <div class="flex gap-2 w-full">
-        <UButton variant="outline" color="neutral" class="flex-1" @click="showEdit = false">
+        <UButton
+          variant="outline"
+          color="neutral"
+          class="flex-1"
+          @click="showEdit = false"
+        >
           {{ t('common.cancel') }}
         </UButton>
-        <UButton class="flex-1" :loading="saving" @click="saveEdit">
+        <UButton
+          class="flex-1"
+          :loading="saving"
+          @click="saveEdit"
+        >
           {{ t('common.save') }}
         </UButton>
       </div>

@@ -3,7 +3,7 @@ import { meals } from '../../db/schema'
 import { and, eq } from 'drizzle-orm'
 
 export default defineEventHandler(async (event) => {
-  const session = await requireUserSession(event)
+  const session = await requireSession(event)
   const id = getRouterParam(event, 'id')!
   const { totalCalories, totalProtein, totalCarbs, totalFat, items, mealCategory } = await readBody(event)
 

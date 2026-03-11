@@ -1,9 +1,9 @@
 import { db } from '../../db'
 import { meals, userGoals } from '../../db/schema'
-import { eq, desc, sql, gte } from 'drizzle-orm'
+import { eq, desc, sql } from 'drizzle-orm'
 
 export default defineEventHandler(async (event) => {
-  const session = await requireUserSession(event)
+  const session = await requireSession(event)
   const { days = 30 } = getQuery(event)
   const limit = Math.min(Number(days) || 30, 90)
 

@@ -11,10 +11,10 @@ const MCP_VERSION = '2025-11-25'
 const TOOLS = [
   {
     name: 'get_today',
-    description: "Get today's full nutrition summary: calories and macros consumed vs goals, plus the list of meals logged.",
+    description: 'Get today\'s full nutrition summary: calories and macros consumed vs goals, plus the list of meals logged.',
     inputSchema: { type: 'object', properties: {} },
     annotations: {
-      title: "Today's Summary",
+      title: 'Today\'s Summary',
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
@@ -40,7 +40,7 @@ const TOOLS = [
   },
   {
     name: 'get_goals',
-    description: "Get the user's daily nutrition goals (calories, protein, carbs, fat targets).",
+    description: 'Get the user\'s daily nutrition goals (calories, protein, carbs, fat targets).',
     inputSchema: { type: 'object', properties: {} },
     annotations: {
       title: 'Daily Goals',
@@ -52,7 +52,7 @@ const TOOLS = [
   },
   {
     name: 'set_goals',
-    description: "Update the user's daily nutrition goals. All fields are optional — only provided fields will be updated.",
+    description: 'Update the user\'s daily nutrition goals. All fields are optional — only provided fields will be updated.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -116,7 +116,7 @@ const TOOLS = [
   },
   {
     name: 'get_date',
-    description: "Get the current date and day of the week in the server's timezone.",
+    description: 'Get the current date and day of the week in the server\'s timezone.',
     inputSchema: { type: 'object', properties: {} },
     annotations: {
       title: 'Get Current Date',
@@ -140,7 +140,7 @@ const TOOLS = [
   },
   {
     name: 'log_weight',
-    description: "Log the user's body weight for today (or a specific date).",
+    description: 'Log the user\'s body weight for today (or a specific date).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -182,7 +182,7 @@ const TOOLS = [
   },
   {
     name: 'get_favorite_meals',
-    description: "Get the user's saved favorite meals list.",
+    description: 'Get the user\'s saved favorite meals list.',
     inputSchema: { type: 'object', properties: {} },
     annotations: {
       title: 'Favorite Meals',
@@ -194,7 +194,7 @@ const TOOLS = [
   },
   {
     name: 'log_favorite',
-    description: "Log a saved favorite meal to today's journal.",
+    description: 'Log a saved favorite meal to today\'s journal.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -225,7 +225,7 @@ function getBaseUrl(event: Parameters<typeof getHeader>[0]): string {
 }
 
 async function executeTool(name: string, args: Record<string, unknown>, userId: string): Promise<unknown> {
-  const today = new Date().toISOString().split('T')[0]
+  const today = new Date().toISOString().split('T')[0] ?? ''
 
   if (name === 'get_goals') {
     const goals = await db.query.userGoals.findFirst({ where: eq(userGoals.userId, userId) })
@@ -400,13 +400,14 @@ async function executeTool(name: string, args: Record<string, unknown>, userId: 
     const dateStr = String(args.date ?? today)
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/
     if (!dateRegex.test(dateStr)) throw new Error('date must be in YYYY-MM-DD format')
-    const note = args.note ? String(args.note) : undefined
+    const note = args.note ? String(args.note) : null
     const [entry] = await db.insert(weightEntries).values({
       userId,
       weight: weightVal,
       date: dateStr,
-      ...(note ? { note } : {})
+      note
     }).returning()
+    if (!entry) throw new Error('Failed to log weight')
     return { logged: true, entry }
   }
 
@@ -470,6 +471,7 @@ async function executeTool(name: string, args: Record<string, unknown>, userId: 
       totalFat: fav.totalFat,
       confidence: 1
     }).returning()
+    if (!logged) throw new Error('Failed to log favorite meal')
     return { logged: true, meal_id: logged.id, name: fav.name, calories: Math.round(fav.totalCalories) }
   }
 
@@ -558,7 +560,7 @@ export default defineEventHandler(async (event) => {
       const accept = getHeader(event, 'accept') ?? ''
       if (accept.includes('text/event-stream')) {
         const eventStream = createEventStream(event)
-        const today = new Date().toISOString().split('T')[0]
+        const today = new Date().toISOString().split('T')[0] ?? ''
 
         void (async () => {
           try {

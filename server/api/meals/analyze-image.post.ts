@@ -1,7 +1,7 @@
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 
 export default defineEventHandler(async (event) => {
-  const session = await requireUserSession(event)
+  const session = await requireSession(event)
   const { image, mimeType } = await readBody(event)
 
   if (!image || !mimeType) {

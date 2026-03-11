@@ -7,6 +7,11 @@ const links = [
   { to: '/history', icon: 'i-lucide-calendar', labelKey: 'nav.history' },
   { to: '/settings', icon: 'i-lucide-settings', labelKey: 'nav.settings' }
 ]
+
+function isActive(to: string) {
+  if (to === '/add') return route.path.startsWith('/add')
+  return route.path === to
+}
 </script>
 
 <template>
@@ -17,9 +22,12 @@ const links = [
         :key="link.to"
         :to="link.to"
         class="flex flex-1 flex-col items-center justify-center gap-1 text-xs font-medium transition-colors"
-        :class="route.path === link.to ? 'text-primary' : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]'"
+        :class="isActive(link.to) ? 'text-primary' : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]'"
       >
-        <UIcon :name="link.icon" class="w-5 h-5" />
+        <UIcon
+          :name="link.icon"
+          class="w-5 h-5"
+        />
         <span>{{ $t(link.labelKey) }}</span>
       </NuxtLink>
     </div>

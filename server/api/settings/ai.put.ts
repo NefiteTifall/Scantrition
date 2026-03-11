@@ -3,7 +3,7 @@ import { aiSettings } from '../../db/schema'
 import { eq } from 'drizzle-orm'
 
 export default defineEventHandler(async (event) => {
-  const session = await requireUserSession(event)
+  const session = await requireSession(event)
   const { provider, apiKey, model } = await readBody(event)
 
   const existing = await db.query.aiSettings.findFirst({
@@ -31,6 +31,8 @@ export default defineEventHandler(async (event) => {
       }
     })
     .returning()
+
+  if (!result) throw createError({ statusCode: 500, message: 'Failed to save AI settings' })
 
   return { provider: result.provider, model: result.model, hasApiKey: !!result.apiKey }
 })

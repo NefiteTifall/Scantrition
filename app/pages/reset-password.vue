@@ -28,7 +28,7 @@ const loading = ref(false)
 const success = ref(false)
 const error = ref('')
 
-async function submit(event: FormSubmitEvent<{ password: string; passwordConfirm: string }>) {
+async function submit(event: FormSubmitEvent<{ password: string, passwordConfirm: string }>) {
   error.value = ''
 
   if (event.data.password !== event.data.passwordConfirm) {
@@ -59,18 +59,46 @@ async function submit(event: FormSubmitEvent<{ password: string; passwordConfirm
 <template>
   <div class="min-h-screen flex items-center justify-center px-4 py-12 bg-[var(--ui-bg)]">
     <!-- No token -->
-    <div v-if="!token" class="w-full max-w-sm text-center space-y-4">
-      <UIcon name="i-lucide-alert-triangle" class="w-14 h-14 mx-auto text-warning" />
-      <p class="text-[var(--ui-text-muted)]">{{ t('auth.invalidResetLink') }}</p>
-      <UButton to="/forgot-password" block>{{ t('auth.requestNewLink') }}</UButton>
+    <div
+      v-if="!token"
+      class="w-full max-w-sm text-center space-y-4"
+    >
+      <UIcon
+        name="i-lucide-alert-triangle"
+        class="w-14 h-14 mx-auto text-warning"
+      />
+      <p class="text-[var(--ui-text-muted)]">
+        {{ t('auth.invalidResetLink') }}
+      </p>
+      <UButton
+        to="/forgot-password"
+        block
+      >
+        {{ t('auth.requestNewLink') }}
+      </UButton>
     </div>
 
     <!-- Success -->
-    <div v-else-if="success" class="w-full max-w-sm text-center space-y-4">
-      <UIcon name="i-lucide-check-circle" class="w-14 h-14 mx-auto text-primary" />
-      <h2 class="text-xl font-bold">{{ t('auth.resetSuccess') }}</h2>
-      <p class="text-sm text-[var(--ui-text-muted)]">{{ t('auth.resetSuccessDesc') }}</p>
-      <UButton to="/login" block>{{ t('auth.login') }}</UButton>
+    <div
+      v-else-if="success"
+      class="w-full max-w-sm text-center space-y-4"
+    >
+      <UIcon
+        name="i-lucide-check-circle"
+        class="w-14 h-14 mx-auto text-primary"
+      />
+      <h2 class="text-xl font-bold">
+        {{ t('auth.resetSuccess') }}
+      </h2>
+      <p class="text-sm text-[var(--ui-text-muted)]">
+        {{ t('auth.resetSuccessDesc') }}
+      </p>
+      <UButton
+        to="/login"
+        block
+      >
+        {{ t('auth.login') }}
+      </UButton>
     </div>
 
     <!-- Form -->

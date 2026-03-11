@@ -8,17 +8,17 @@ interface OFFSearchResponse {
     image_url?: string
     nutriments?: {
       'energy-kcal_100g'?: number
-      energy_100g?: number
-      proteins_100g?: number
-      carbohydrates_100g?: number
-      fat_100g?: number
-      fiber_100g?: number
+      'energy_100g'?: number
+      'proteins_100g'?: number
+      'carbohydrates_100g'?: number
+      'fat_100g'?: number
+      'fiber_100g'?: number
     }
   }>
 }
 
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  await requireSession(event)
   const { q } = getQuery(event)
 
   if (!q || typeof q !== 'string' || q.trim().length < 2) {
@@ -39,7 +39,7 @@ export default defineEventHandler(async (event) => {
 
   return data.products
     .filter(p => p.nutriments?.['energy-kcal_100g'] || p.nutriments?.energy_100g)
-    .map(p => {
+    .map((p) => {
       const n = p.nutriments ?? {}
       const kcal = n['energy-kcal_100g'] ?? (n.energy_100g ? Math.round(n.energy_100g / 4.184) : 0)
       const name = p.product_name_fr ?? p.product_name ?? 'Unknown'

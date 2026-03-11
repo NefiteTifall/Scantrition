@@ -94,7 +94,9 @@
     "scanAgain": "Scanner à nouveau",
     "changePhoto": "Changer de photo",
     "favorites": "Mes favoris",
-    "noFavorites": "Aucun favori enregistré"
+    "noFavorites": "Aucun favori enregistré",
+    "portionGrams": "Quantité",
+    "portionMultiplier": "Portion"
   },
   "search": {
     "placeholder": "Ex : pain complet, yaourt nature...",

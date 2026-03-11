@@ -2,7 +2,7 @@ import { db } from '../../db'
 import { userGoals } from '../../db/schema'
 
 export default defineEventHandler(async (event) => {
-  const session = await requireUserSession(event)
+  const session = await requireSession(event)
   const { calories, protein, carbs, fat } = await readBody(event)
 
   const [result] = await db

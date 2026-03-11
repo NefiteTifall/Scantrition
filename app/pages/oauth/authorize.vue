@@ -62,33 +62,59 @@ function deny() {
       <template #header>
         <div class="text-center space-y-3 py-2">
           <div class="flex items-center justify-center gap-2">
-            <UIcon name="i-lucide-leaf" class="w-8 h-8 text-primary" />
+            <UIcon
+              name="i-lucide-leaf"
+              class="w-8 h-8 text-primary"
+            />
             <span class="text-xl font-bold">Scantrition</span>
           </div>
-          <h1 class="text-lg font-semibold">{{ t('oauth.title') }}</h1>
+          <h1 class="text-lg font-semibold">
+            {{ t('oauth.title') }}
+          </h1>
         </div>
       </template>
 
-      <div v-if="!isValid" class="text-center py-6 text-[var(--ui-text-muted)]">
-        <UIcon name="i-lucide-alert-triangle" class="w-10 h-10 mx-auto mb-2 text-warning" />
+      <div
+        v-if="!isValid"
+        class="text-center py-6 text-[var(--ui-text-muted)]"
+      >
+        <UIcon
+          name="i-lucide-alert-triangle"
+          class="w-10 h-10 mx-auto mb-2 text-warning"
+        />
         <p>{{ t('oauth.invalidRequest') }}</p>
       </div>
 
-      <div v-else class="space-y-4">
+      <div
+        v-else
+        class="space-y-4"
+      >
         <div class="p-3 bg-[var(--ui-bg-elevated)] rounded-xl">
-          <p class="text-xs text-[var(--ui-text-muted)] mb-0.5">{{ t('oauth.clientLabel') }}</p>
-          <p class="font-mono text-sm font-medium break-all">{{ clientId }}</p>
+          <p class="text-xs text-[var(--ui-text-muted)] mb-0.5">
+            {{ t('oauth.clientLabel') }}
+          </p>
+          <p class="font-mono text-sm font-medium break-all">
+            {{ clientId }}
+          </p>
         </div>
 
         <div class="space-y-2">
-          <p class="text-sm font-medium">{{ t('oauth.permissionsTitle') }}</p>
+          <p class="text-sm font-medium">
+            {{ t('oauth.permissionsTitle') }}
+          </p>
           <div class="space-y-1.5">
             <div class="flex items-center gap-2 text-sm text-[var(--ui-text-muted)]">
-              <UIcon name="i-lucide-check-circle" class="w-4 h-4 text-success shrink-0" />
+              <UIcon
+                name="i-lucide-check-circle"
+                class="w-4 h-4 text-success shrink-0"
+              />
               <span>{{ t('oauth.permRead') }}</span>
             </div>
             <div class="flex items-center gap-2 text-sm text-[var(--ui-text-muted)]">
-              <UIcon name="i-lucide-check-circle" class="w-4 h-4 text-success shrink-0" />
+              <UIcon
+                name="i-lucide-check-circle"
+                class="w-4 h-4 text-success shrink-0"
+              />
               <span>{{ t('oauth.permWrite') }}</span>
             </div>
           </div>
@@ -103,10 +129,21 @@ function deny() {
         />
 
         <div class="flex gap-2 pt-1">
-          <UButton block variant="outline" color="neutral" :disabled="loading" @click="deny">
+          <UButton
+            block
+            variant="outline"
+            color="neutral"
+            :disabled="loading"
+            @click="deny"
+          >
             {{ t('oauth.deny') }}
           </UButton>
-          <UButton block :loading="loading" icon="i-lucide-check" @click="approve">
+          <UButton
+            block
+            :loading="loading"
+            icon="i-lucide-check"
+            @click="approve"
+          >
             {{ t('oauth.approve') }}
           </UButton>
         </div>

@@ -1,3 +1,4 @@
+import type { H3Event } from 'h3'
 import { db } from '../db'
 import { userApiKeys } from '../db/schema'
 import { eq } from 'drizzle-orm'
@@ -36,7 +37,21 @@ export async function getUserIdFromApiKey(rawKey: string): Promise<string | null
   return apiKey.userId
 }
 
-export async function requireAuth(event: Parameters<typeof requireUserSession>[0]): Promise<string> {
+export interface AuthUser {
+  id: string
+  email: string
+}
+
+export interface AuthSession {
+  user: AuthUser
+}
+
+export async function requireSession(event: H3Event): Promise<AuthSession> {
+  const session = await requireUserSession(event)
+  return session as unknown as AuthSession
+}
+
+export async function requireAuth(event: H3Event): Promise<string> {
   const auth = getHeader(event, 'authorization')
   if (auth?.startsWith('Bearer ')) {
     const rawToken = auth.slice(7)
@@ -52,6 +67,6 @@ export async function requireAuth(event: Parameters<typeof requireUserSession>[0
     throw createError({ statusCode: 401, message: 'Invalid token' })
   }
 
-  const session = await requireUserSession(event)
+  const session = await requireSession(event)
   return session.user.id
 }

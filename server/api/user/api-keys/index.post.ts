@@ -3,7 +3,7 @@ import { userApiKeys } from '../../../db/schema'
 import { generateApiKey, hashApiKey } from '../../../utils/apiAuth'
 
 export default defineEventHandler(async (event) => {
-  const session = await requireUserSession(event)
+  const session = await requireSession(event)
   const { name } = await readBody(event)
 
   if (!name?.trim()) throw createError({ statusCode: 400, message: 'Name is required' })

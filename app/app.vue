@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { loggedIn, user, clear } = useUserSession()
+const { loggedIn, clear } = useUserSession()
 const { t } = useI18n()
 
 useHead({
@@ -25,8 +25,14 @@ async function logout() {
     <div class="h-dvh flex flex-col overflow-hidden">
       <header class="shrink-0 z-40 bg-[var(--ui-bg)] border-b border-[var(--ui-border)]">
         <div class="flex items-center justify-between max-w-xl mx-auto px-4 h-14">
-          <NuxtLink to="/dashboard" class="flex items-center gap-2">
-            <UIcon name="i-lucide-leaf" class="w-6 h-6 text-primary" />
+          <NuxtLink
+            to="/dashboard"
+            class="flex items-center gap-2"
+          >
+            <UIcon
+              name="i-lucide-leaf"
+              class="w-6 h-6 text-primary"
+            />
             <span class="font-bold text-lg tracking-tight">Scantrition</span>
           </NuxtLink>
 
@@ -49,7 +55,10 @@ async function logout() {
         <NuxtPage />
       </main>
 
-      <AppNavbar v-if="loggedIn" class="shrink-0" />
+      <AppNavbar
+        v-if="loggedIn"
+        class="shrink-0"
+      />
     </div>
   </UApp>
 </template>

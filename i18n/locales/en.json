@@ -94,7 +94,9 @@
     "scanAgain": "Scan again",
     "changePhoto": "Change photo",
     "favorites": "My favorites",
-    "noFavorites": "No favorites yet"
+    "noFavorites": "No favorites yet",
+    "portionGrams": "Quantity",
+    "portionMultiplier": "Portion"
   },
   "search": {
     "placeholder": "e.g. whole wheat bread, plain yogurt...",
