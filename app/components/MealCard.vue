@@ -189,19 +189,19 @@ async function saveEdit() {
       <span
         v-if="meal.totalFiber"
         class="text-xs text-[var(--ui-text-muted)]"
-      >Fibres {{ Math.round((meal.totalFiber ?? 0) * 10) / 10 }}g</span>
+      >{{ t('nutrition.fiber') }} {{ Math.round((meal.totalFiber ?? 0) * 10) / 10 }}g</span>
       <span
         v-if="meal.totalSugar"
         class="text-xs text-[var(--ui-text-muted)]"
-      >Sucres {{ Math.round((meal.totalSugar ?? 0) * 10) / 10 }}g</span>
+      >{{ t('nutrition.sugar') }} {{ Math.round((meal.totalSugar ?? 0) * 10) / 10 }}g</span>
       <span
         v-if="meal.totalSaturatedFat"
         class="text-xs text-[var(--ui-text-muted)]"
-      >AG sat. {{ Math.round((meal.totalSaturatedFat ?? 0) * 10) / 10 }}g</span>
+      >{{ t('nutrition.saturatedFat') }} {{ Math.round((meal.totalSaturatedFat ?? 0) * 10) / 10 }}g</span>
       <span
         v-if="meal.totalSalt"
         class="text-xs text-[var(--ui-text-muted)]"
-      >Sel {{ Math.round((meal.totalSalt ?? 0) * 10) / 10 }}g</span>
+      >{{ t('nutrition.salt') }} {{ Math.round((meal.totalSalt ?? 0) * 10) / 10 }}g</span>
     </div>
   </div>
 

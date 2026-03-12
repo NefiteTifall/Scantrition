@@ -3,6 +3,12 @@ const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
 
+interface Ingredient {
+  text: string
+  vegan?: 'yes' | 'no' | 'maybe'
+  percent?: number
+}
+
 interface Product {
   id: string
   name: string
@@ -19,7 +25,42 @@ interface Product {
   sugar: number | null
   saturatedFat: number | null
   salt: number | null
+  monounsaturatedFat: number | null
+  polyunsaturatedFat: number | null
+  transFat: number | null
+  omega3Fat: number | null
+  omega6Fat: number | null
+  cholesterol: number | null
+  sodium: number | null
+  potassium: number | null
+  calcium: number | null
+  iron: number | null
+  magnesium: number | null
+  zinc: number | null
+  phosphorus: number | null
+  iodine: number | null
+  selenium: number | null
+  vitaminA: number | null
+  vitaminB1: number | null
+  vitaminB2: number | null
+  vitaminB3: number | null
+  vitaminB5: number | null
+  vitaminB6: number | null
+  vitaminB9: number | null
+  vitaminB12: number | null
+  vitaminC: number | null
+  vitaminD: number | null
+  vitaminE: number | null
+  vitaminK: number | null
+  caffeine: number | null
+  alcohol: number | null
   nutriScore: 'A' | 'B' | 'C' | 'D' | 'E' | null
+  novaGroup: number | null
+  origins: string | null
+  quantity: string | null
+  ingredients: Ingredient[] | null
+  labelsTags: string[] | null
+  additivesTags: string[] | null
   createdAt: string
 }
 
@@ -34,11 +75,14 @@ const defaultGoals = { calories: 2000, protein: 150, carbs: 250, fat: 70, fiber:
 const safeGoals = computed(() => goals.value ?? defaultGoals)
 
 const nutriScoreColors: Record<string, string> = {
-  A: 'bg-green-500',
-  B: 'bg-lime-500',
-  C: 'bg-yellow-500',
-  D: 'bg-orange-500',
-  E: 'bg-red-500'
+  A: 'bg-green-500', B: 'bg-lime-500', C: 'bg-yellow-500', D: 'bg-orange-500', E: 'bg-red-500'
+}
+
+const novaClass: Record<number, string> = {
+  1: 'bg-green-500/15 text-green-700 dark:text-green-400',
+  2: 'bg-lime-500/15 text-lime-700 dark:text-lime-400',
+  3: 'bg-orange-500/15 text-orange-600 dark:text-orange-400',
+  4: 'bg-red-500/15 text-red-700 dark:text-red-400'
 }
 
 function bar(value: number | null | undefined, max: number) {
@@ -59,6 +103,78 @@ const sourceKey: Record<string, string> = {
   ai: 'textMode',
   photo: 'photoMode'
 }
+
+const displayLabels = computed(() =>
+  (product.value?.labelsTags ?? [])
+    .map(tag => {
+      const label = tag.replace(/^[a-z]{2}:/, '')
+      if (label.startsWith('nutriscore')) return null
+      if (/^(eu|fr|tn|en)-bio/.test(label)) return null
+      if (label === 'eu-organic') return null
+      const map: Record<string, string> = { organic: 'Bio', fsc: 'FSC', 'fsc-mix': 'FSC Mix' }
+      return map[label] ?? label.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+    })
+    .filter(Boolean) as string[]
+)
+
+const displayAdditives = computed(() =>
+  [...new Set(
+    (product.value?.additivesTags ?? [])
+      .map(tag => tag.replace(/^en:/, '').toUpperCase())
+      .filter(code => /^E\d+$/.test(code))
+  )]
+)
+
+const showIngredients = ref(false)
+
+// Vitamins & minerals to display (only non-null)
+const vitamins = computed(() => {
+  const p = product.value
+  if (!p) return []
+  return [
+    { key: 'vitaminA', label: t('nutrition.vitaminA'), value: p.vitaminA },
+    { key: 'vitaminB1', label: t('nutrition.vitaminB1'), value: p.vitaminB1 },
+    { key: 'vitaminB2', label: t('nutrition.vitaminB2'), value: p.vitaminB2 },
+    { key: 'vitaminB3', label: t('nutrition.vitaminB3'), value: p.vitaminB3 },
+    { key: 'vitaminB5', label: t('nutrition.vitaminB5'), value: p.vitaminB5 },
+    { key: 'vitaminB6', label: t('nutrition.vitaminB6'), value: p.vitaminB6 },
+    { key: 'vitaminB9', label: t('nutrition.vitaminB9'), value: p.vitaminB9 },
+    { key: 'vitaminB12', label: t('nutrition.vitaminB12'), value: p.vitaminB12 },
+    { key: 'vitaminC', label: t('nutrition.vitaminC'), value: p.vitaminC },
+    { key: 'vitaminD', label: t('nutrition.vitaminD'), value: p.vitaminD },
+    { key: 'vitaminE', label: t('nutrition.vitaminE'), value: p.vitaminE },
+    { key: 'vitaminK', label: t('nutrition.vitaminK'), value: p.vitaminK }
+  ].filter(v => v.value != null && v.value > 0)
+})
+
+const minerals = computed(() => {
+  const p = product.value
+  if (!p) return []
+  return [
+    { key: 'calcium', label: t('nutrition.calcium'), value: p.calcium },
+    { key: 'iron', label: t('nutrition.iron'), value: p.iron },
+    { key: 'magnesium', label: t('nutrition.magnesium'), value: p.magnesium },
+    { key: 'zinc', label: t('nutrition.zinc'), value: p.zinc },
+    { key: 'phosphorus', label: t('nutrition.phosphorus'), value: p.phosphorus },
+    { key: 'potassium', label: t('nutrition.potassium'), value: p.potassium },
+    { key: 'sodium', label: t('nutrition.sodium'), value: p.sodium },
+    { key: 'iodine', label: t('nutrition.iodine'), value: p.iodine },
+    { key: 'selenium', label: t('nutrition.selenium'), value: p.selenium }
+  ].filter(v => v.value != null && v.value > 0)
+})
+
+const extendedFats = computed(() => {
+  const p = product.value
+  if (!p) return []
+  return [
+    { key: 'monounsaturatedFat', label: t('nutrition.monounsaturatedFat'), value: p.monounsaturatedFat },
+    { key: 'polyunsaturatedFat', label: t('nutrition.polyunsaturatedFat'), value: p.polyunsaturatedFat },
+    { key: 'transFat', label: t('nutrition.transFat'), value: p.transFat },
+    { key: 'omega3Fat', label: t('nutrition.omega3'), value: p.omega3Fat },
+    { key: 'omega6Fat', label: t('nutrition.omega6'), value: p.omega6Fat },
+    { key: 'cholesterol', label: t('nutrition.cholesterol'), value: p.cholesterol }
+  ].filter(v => v.value != null && v.value > 0)
+})
 </script>
 
 <template>
@@ -80,11 +196,18 @@ const sourceKey: Record<string, string> = {
       <h1 class="font-bold text-base flex-1 truncate">
         {{ product.name }}
       </h1>
-      <span
-        v-if="product.nutriScore"
-        class="shrink-0 text-xs font-bold px-2 py-1 rounded text-white"
-        :class="nutriScoreColors[product.nutriScore]"
-      >{{ product.nutriScore }}</span>
+      <div class="flex items-center gap-1.5 shrink-0">
+        <span
+          v-if="product.nutriScore"
+          class="text-xs font-bold px-2 py-1 rounded text-white"
+          :class="nutriScoreColors[product.nutriScore]"
+        >{{ product.nutriScore }}</span>
+        <span
+          v-if="product.novaGroup"
+          class="text-[10px] font-bold px-1.5 py-0.5 rounded"
+          :class="novaClass[product.novaGroup]"
+        >NOVA {{ product.novaGroup }}</span>
+      </div>
     </div>
 
     <!-- Product identity -->
@@ -105,7 +228,7 @@ const sourceKey: Record<string, string> = {
         >
           {{ product.brand }}
         </p>
-        <div class="flex items-center gap-2 mt-2">
+        <div class="flex items-center gap-2 mt-1 flex-wrap">
           <div class="flex items-center gap-1 text-xs text-[var(--ui-text-muted)]">
             <UIcon
               :name="sourceIcon[product.source]"
@@ -117,8 +240,30 @@ const sourceKey: Record<string, string> = {
             v-if="product.servingSize"
             class="text-xs text-[var(--ui-text-muted)]"
           >· {{ product.servingSize }}</span>
+          <span
+            v-if="product.quantity"
+            class="text-xs text-[var(--ui-text-muted)]"
+          >· {{ product.quantity }}</span>
         </div>
+        <p
+          v-if="product.origins"
+          class="text-xs text-[var(--ui-text-muted)] mt-1"
+        >
+          {{ t('nutrition.origins') }}: {{ product.origins }}
+        </p>
       </div>
+    </div>
+
+    <!-- Labels -->
+    <div
+      v-if="displayLabels.length"
+      class="px-4 mb-3 flex flex-wrap gap-1.5"
+    >
+      <span
+        v-for="label in displayLabels"
+        :key="label"
+        class="text-xs px-2 py-0.5 rounded-full bg-green-500/10 text-green-700 dark:text-green-400 font-medium"
+      >{{ label }}</span>
     </div>
 
     <!-- Calories highlight -->
@@ -187,6 +332,15 @@ const sourceKey: Record<string, string> = {
           <span class="text-xs text-[var(--ui-text-muted)]">{{ t('nutrition.saturatedFat') }}</span>
           <span class="text-xs font-medium">{{ Math.round(product.saturatedFat * 10) / 10 }}g</span>
         </div>
+        <!-- Extended fats sub-rows -->
+        <div
+          v-for="ef in extendedFats"
+          :key="ef.key"
+          class="flex items-center justify-between mt-1.5 pl-3 border-l-2 border-[var(--ui-border)]"
+        >
+          <span class="text-xs text-[var(--ui-text-muted)]">{{ ef.label }}</span>
+          <span class="text-xs font-medium">{{ Math.round((ef.value ?? 0) * 100) / 100 }}g</span>
+        </div>
       </div>
 
       <!-- Carbs -->
@@ -241,6 +395,101 @@ const sourceKey: Record<string, string> = {
       >
         <span class="text-sm font-medium">{{ t('nutrition.salt') }}</span>
         <span class="text-sm font-bold">{{ Math.round(product.salt * 100) / 100 }}g</span>
+      </div>
+    </div>
+
+    <!-- Vitamins -->
+    <div
+      v-if="vitamins.length"
+      class="mx-4 rounded-2xl border border-[var(--ui-border)] overflow-hidden mb-4"
+    >
+      <p class="px-4 py-2 text-xs font-semibold text-[var(--ui-text-muted)] border-b border-[var(--ui-border)] uppercase tracking-wide">
+        Vitamines
+      </p>
+      <div class="divide-y divide-[var(--ui-border)]">
+        <div
+          v-for="v in vitamins"
+          :key="v.key"
+          class="px-4 py-2 flex items-center justify-between"
+        >
+          <span class="text-sm">{{ v.label }}</span>
+          <span class="text-sm font-medium">{{ Math.round((v.value ?? 0) * 1000) / 1000 }} mg</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Minerals -->
+    <div
+      v-if="minerals.length"
+      class="mx-4 rounded-2xl border border-[var(--ui-border)] overflow-hidden mb-4"
+    >
+      <p class="px-4 py-2 text-xs font-semibold text-[var(--ui-text-muted)] border-b border-[var(--ui-border)] uppercase tracking-wide">
+        Minéraux
+      </p>
+      <div class="divide-y divide-[var(--ui-border)]">
+        <div
+          v-for="m in minerals"
+          :key="m.key"
+          class="px-4 py-2 flex items-center justify-between"
+        >
+          <span class="text-sm">{{ m.label }}</span>
+          <span class="text-sm font-medium">{{ Math.round((m.value ?? 0) * 1000) / 1000 }} mg</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Additives -->
+    <div
+      v-if="displayAdditives.length"
+      class="mx-4 mb-4"
+    >
+      <p class="text-xs text-[var(--ui-text-muted)] mb-1.5">
+        {{ t('nutrition.additives') }}
+      </p>
+      <div class="flex flex-wrap gap-1">
+        <span
+          v-for="add in displayAdditives"
+          :key="add"
+          class="text-xs px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400"
+        >{{ add }}</span>
+      </div>
+    </div>
+
+    <!-- Ingredients collapsible -->
+    <div
+      v-if="product.ingredients?.length"
+      class="mx-4 mb-4 rounded-2xl border border-[var(--ui-border)] overflow-hidden"
+    >
+      <button
+        class="flex items-center gap-2 text-sm font-medium w-full px-4 py-3"
+        @click="showIngredients = !showIngredients"
+      >
+        <UIcon
+          :name="showIngredients ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+          class="w-4 h-4 text-[var(--ui-text-muted)]"
+        />
+        {{ t('nutrition.ingredients') }} ({{ product.ingredients.length }})
+      </button>
+      <div
+        v-if="showIngredients"
+        class="border-t border-[var(--ui-border)] divide-y divide-[var(--ui-border)]"
+      >
+        <div
+          v-for="ing in product.ingredients"
+          :key="ing.text"
+          class="px-4 py-2 flex items-center gap-2 text-xs text-[var(--ui-text-muted)]"
+        >
+          <span class="flex-1">{{ ing.text }}</span>
+          <span
+            v-if="ing.percent"
+            class="shrink-0 opacity-60"
+          >{{ Math.round(ing.percent) }}%</span>
+          <span
+            v-if="ing.vegan === 'no'"
+            class="shrink-0 text-red-400"
+            :title="t('nutrition.notVegan')"
+          >🥩</span>
+        </div>
       </div>
     </div>
   </div>

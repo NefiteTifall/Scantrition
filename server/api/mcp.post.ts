@@ -3,8 +3,8 @@ import { requireAuth } from '../utils/apiAuth'
 import { getAIProvider, extractProviderError } from '../utils/ai'
 import { createMCPSession, getMCPSession, purgeExpiredSessions } from '../utils/mcpSessions'
 import { db } from '../db'
-import { meals, userGoals, weightEntries, userFavoriteProducts, products } from '../db/schema'
-import { eq, sql, desc, and } from 'drizzle-orm'
+import { meals, mealItems, userGoals, weightEntries, userFavoriteProducts, products } from '../db/schema'
+import { eq, sql, desc, and, inArray } from 'drizzle-orm'
 
 const MCP_VERSION = '2025-11-25'
 
@@ -260,6 +260,16 @@ async function executeTool(name: string, args: Record<string, unknown>, userId: 
       }),
       { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, saturatedFat: 0, salt: 0 }
     )
+    // Fetch meal_items for all today's meals
+    const mealIds = dayMeals.map(m => m.id)
+    const allItems = mealIds.length
+      ? await db.select().from(mealItems).where(inArray(mealItems.mealId, mealIds))
+      : []
+    const itemsByMeal = new Map<string, typeof allItems>()
+    for (const item of allItems) {
+      if (!itemsByMeal.has(item.mealId)) itemsByMeal.set(item.mealId, [])
+      itemsByMeal.get(item.mealId)!.push(item)
+    }
     return {
       date: today,
       consumed: {
@@ -287,7 +297,7 @@ async function executeTool(name: string, args: Record<string, unknown>, userId: 
         nutriScore: m.nutriScore,
         healthScore: m.healthScore,
         healthLabel: m.healthLabel,
-        items: m.items,
+        items: (itemsByMeal.get(m.id) ?? []).map(i => ({ name: i.name, quantity: i.quantityText, calories: i.calories, protein: i.protein, carbs: i.carbs, fat: i.fat })),
         calories: Math.round(m.totalCalories),
         protein: Math.round(m.totalProtein * 10) / 10,
         carbs: Math.round(m.totalCarbs * 10) / 10,
@@ -371,12 +381,11 @@ async function executeTool(name: string, args: Record<string, unknown>, userId: 
     const healthGoalForMeal = goalsForMeal?.healthGoal ?? 'balance'
     try {
       const result = await provider.analyzeText(description, healthGoalForMeal)
-      await db.insert(meals).values({
+      const [meal] = await db.insert(meals).values({
         userId,
         date: today,
         type: 'text',
         mealCategory,
-        items: result.items,
         totalCalories: result.totalCalories,
         totalProtein: result.totalProtein,
         totalCarbs: result.totalCarbs,
@@ -389,7 +398,25 @@ async function executeTool(name: string, args: Record<string, unknown>, userId: 
         healthScore: result.healthScore ?? null,
         healthLabel: result.healthLabel ?? null,
         confidence: result.confidence
-      })
+      }).returning()
+      if (meal && result.items?.length) {
+        await db.insert(mealItems).values(
+          result.items.map((item: { name: string, quantity: string, calories: number, protein: number, carbs: number, fat: number, fiber?: number, sugar?: number, saturatedFat?: number, salt?: number }) => ({
+            mealId: meal.id,
+            name: item.name,
+            quantityText: item.quantity,
+            quantityGrams: item.quantity?.match(/(\d+(?:\.\d+)?)\s*g/i)?.[1] ? parseFloat(item.quantity.match(/(\d+(?:\.\d+)?)\s*g/i)![1]) : null,
+            calories: item.calories,
+            protein: item.protein,
+            carbs: item.carbs,
+            fat: item.fat,
+            fiber: item.fiber ?? null,
+            sugar: item.sugar ?? null,
+            saturatedFat: item.saturatedFat ?? null,
+            salt: item.salt ?? null
+          }))
+        )
+      }
       return { logged: true, result }
     } catch (err) {
       throw new Error(extractProviderError(err, provider.providerName))
@@ -537,7 +564,6 @@ async function executeTool(name: string, args: Record<string, unknown>, userId: 
       type: 'favorite',
       mealCategory,
       label: favName,
-      items: [{ productId: p.id, name: p.name, quantity: p.servingSize ?? '1 portion', calories: p.calories, protein: p.protein, carbs: p.carbs, fat: p.fat, fiber: p.fiber ?? undefined }],
       totalCalories: p.calories,
       totalProtein: p.protein,
       totalCarbs: p.carbs,
@@ -546,6 +572,18 @@ async function executeTool(name: string, args: Record<string, unknown>, userId: 
       confidence: 1
     }).returning()
     if (!logged) throw new Error('Failed to log favorite')
+    await db.insert(mealItems).values({
+      mealId: logged.id,
+      productId: p.id,
+      name: p.name,
+      quantityText: p.servingSize ?? '1 portion',
+      quantityGrams: p.servingSize?.match(/(\d+(?:\.\d+)?)\s*g/i)?.[1] ? parseFloat(p.servingSize.match(/(\d+(?:\.\d+)?)\s*g/i)![1]) : null,
+      calories: p.calories,
+      protein: p.protein,
+      carbs: p.carbs,
+      fat: p.fat,
+      fiber: p.fiber ?? null
+    })
     return { logged: true, meal_id: logged.id, name: favName, calories: Math.round(p.calories) }
   }
 
@@ -682,12 +720,11 @@ export default defineEventHandler(async (event) => {
             const sseCategory = validCats.includes(String(args.meal_category ?? ''))
               ? String(args.meal_category) as 'breakfast' | 'lunch' | 'snack' | 'dinner'
               : null
-            await db.insert(meals).values({
+            const [sseMeal] = await db.insert(meals).values({
               userId: userId!,
               date: today,
               type: 'text',
               mealCategory: sseCategory,
-              items: result.items,
               totalCalories: result.totalCalories,
               totalProtein: result.totalProtein,
               totalCarbs: result.totalCarbs,
@@ -700,7 +737,25 @@ export default defineEventHandler(async (event) => {
               healthScore: result.healthScore ?? null,
               healthLabel: result.healthLabel ?? null,
               confidence: result.confidence
-            })
+            }).returning()
+            if (sseMeal && result.items?.length) {
+              await db.insert(mealItems).values(
+                result.items.map((item: { name: string, quantity: string, calories: number, protein: number, carbs: number, fat: number, fiber?: number, sugar?: number, saturatedFat?: number, salt?: number }) => ({
+                  mealId: sseMeal.id,
+                  name: item.name,
+                  quantityText: item.quantity,
+                  quantityGrams: item.quantity?.match(/(\d+(?:\.\d+)?)\s*g/i)?.[1] ? parseFloat(item.quantity.match(/(\d+(?:\.\d+)?)\s*g/i)![1]) : null,
+                  calories: item.calories,
+                  protein: item.protein,
+                  carbs: item.carbs,
+                  fat: item.fat,
+                  fiber: item.fiber ?? null,
+                  sugar: item.sugar ?? null,
+                  saturatedFat: item.saturatedFat ?? null,
+                  salt: item.salt ?? null
+                }))
+              )
+            }
 
             await eventStream.push({
               data: JSON.stringify({

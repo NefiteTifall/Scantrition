@@ -55,6 +55,8 @@ interface FavoriteProduct {
     brand: string | null
     image: string | null
     nutriScore: 'A' | 'B' | 'C' | 'D' | 'E' | null
+    novaGroup: number | null
+    origins: string | null
     source: string
   }
 }
@@ -206,13 +208,34 @@ async function addToJournal(result: NutritionResult, type: string = activeMode.v
         totalSugar: result.totalSugar,
         totalSaturatedFat: result.totalSaturatedFat,
         totalSalt: result.totalSalt,
+        totalMonounsaturatedFat: result.totalMonounsaturatedFat,
+        totalPolyunsaturatedFat: result.totalPolyunsaturatedFat,
+        totalTransFat: result.totalTransFat,
+        totalOmega3Fat: result.totalOmega3Fat,
+        totalOmega6Fat: result.totalOmega6Fat,
+        totalCholesterol: result.totalCholesterol,
         nutriScore: result.nutriScore,
         healthScore: result.healthScore,
         healthLabel: result.healthLabel,
         confidence: result.confidence,
+        productName: result.productName,
         productBarcode: result.barcode,
         productBrand: result.brand,
-        productImage: result.image
+        productImage: result.image,
+        productServingSize: result.servingSize,
+        productServingGrams: result.servingGrams,
+        productNovaGroup: result.novaGroup,
+        productNutriscoreScore: result.nutriscoreScore,
+        productOrigins: result.origins,
+        productQuantity: result.quantity,
+        productCategoriesFr: result.categoriesFr,
+        productIngredients: result.ingredients,
+        productLabelsTags: result.labelsTags,
+        productAdditivesTags: result.additivesTags,
+        productFattyAcids: result.fattyAcids,
+        productSugarsDetail: result.sugarsDetail,
+        productAminoAcids: result.aminoAcids,
+        productMineralsDetail: result.mineralsDetail
       }
     })
     toast.add({ title: t('add.mealAdded'), color: 'success', icon: 'i-lucide-check-circle' })
@@ -229,6 +252,8 @@ async function addFavoriteToJournal(fav: FavoriteProduct) {
     brand: p.brand ?? undefined,
     image: p.image ?? undefined,
     barcode: p.barcode ?? undefined,
+    novaGroup: p.novaGroup ?? undefined,
+    origins: p.origins ?? undefined,
     items: [{
       productId: p.id,
       name: p.name,
@@ -418,15 +443,15 @@ async function deleteFavorite(id: string) {
               class="text-xs text-[var(--ui-text-muted)] mt-0.5"
             >
               <template v-if="meal.totalFiber">
-                Fibres {{ Math.round((meal.totalFiber ?? 0) * 10) / 10 }}g
+                {{ t('nutrition.fiber') }} {{ Math.round((meal.totalFiber ?? 0) * 10) / 10 }}g
               </template><template v-if="meal.totalFiber && (meal.totalSugar || meal.totalSalt)">
                 ·
               </template><template v-if="meal.totalSugar">
-                Sucres {{ Math.round((meal.totalSugar ?? 0) * 10) / 10 }}g
+                {{ t('nutrition.sugar') }} {{ Math.round((meal.totalSugar ?? 0) * 10) / 10 }}g
               </template><template v-if="meal.totalSugar && meal.totalSalt">
                 ·
               </template><template v-if="meal.totalSalt">
-                Sel {{ Math.round((meal.totalSalt ?? 0) * 10) / 10 }}g
+                {{ t('nutrition.salt') }} {{ Math.round((meal.totalSalt ?? 0) * 10) / 10 }}g
               </template>
             </p>
           </div>

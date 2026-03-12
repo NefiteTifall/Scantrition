@@ -95,6 +95,15 @@ const suggestions = ref<RecipeSuggestion[]>([])
 const suggestionsLoading = ref(false)
 const suggestionsError = ref(false)
 
+async function deleteMeal(id: string) {
+  try {
+    await $fetch(`/api/meals/${id}`, { method: 'DELETE' })
+    await refreshMeals()
+  } catch {
+    // ignore
+  }
+}
+
 async function fetchSuggestions() {
   suggestionsLoading.value = true
   suggestionsError.value = false

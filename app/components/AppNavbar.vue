@@ -4,12 +4,14 @@ const route = useRoute()
 const links = [
   { to: '/dashboard', icon: 'i-lucide-layout-dashboard', labelKey: 'nav.dashboard' },
   { to: '/add', icon: 'i-lucide-plus-circle', labelKey: 'nav.add' },
+  { to: '/recipes', icon: 'i-lucide-chef-hat', labelKey: 'nav.recipes' },
   { to: '/history', icon: 'i-lucide-calendar', labelKey: 'nav.history' },
   { to: '/settings', icon: 'i-lucide-settings', labelKey: 'nav.settings' }
 ]
 
 function isActive(to: string) {
   if (to === '/add') return route.path.startsWith('/add')
+  if (to === '/recipes') return route.path.startsWith('/recipes')
   return route.path === to
 }
 </script>
