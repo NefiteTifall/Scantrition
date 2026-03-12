@@ -113,6 +113,12 @@ export default defineEventHandler(async (event) => {
       let productId: string | null = item.productId ?? null
 
       if (!productId && !item.recipeId) {
+        // Normalize nutrition to per-100g before storing in products table.
+        // MealItem values are totals for the portion (e.g. 636 kcal for 600g),
+        // but products.calories must always be per-100g (e.g. 106 kcal/100g).
+        const qg = item.quantityGrams && item.quantityGrams > 0 ? item.quantityGrams : 100
+        const to100g = (v: number) => Math.round(v * 100 / qg * 10) / 10
+
         productId = await upsertProduct({
           userId: session.user.id,
           name: item.name,
@@ -121,14 +127,14 @@ export default defineEventHandler(async (event) => {
           image: body.productImage ?? null,
           source,
           servingSize: body.productServingSize ?? item.quantity,
-          calories: item.calories,
-          protein: item.protein,
-          carbs: item.carbs,
-          fat: item.fat,
-          fiber: item.fiber ?? null,
-          sugar: item.sugar ?? null,
-          saturatedFat: item.saturatedFat ?? null,
-          salt: item.salt ?? null,
+          calories: Math.round(to100g(item.calories)),
+          protein: to100g(item.protein),
+          carbs: to100g(item.carbs),
+          fat: to100g(item.fat),
+          fiber: item.fiber != null ? to100g(item.fiber) : null,
+          sugar: item.sugar != null ? to100g(item.sugar) : null,
+          saturatedFat: item.saturatedFat != null ? to100g(item.saturatedFat) : null,
+          salt: item.salt != null ? to100g(item.salt) : null,
           monounsaturatedFat: body.productMonounsaturatedFat ?? null,
           polyunsaturatedFat: body.productPolyunsaturatedFat ?? null,
           transFat: body.productTransFat ?? null,
