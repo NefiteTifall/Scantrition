@@ -1,9 +1,17 @@
-export default defineNuxtRouteMiddleware((to) => {
-  const { loggedIn } = useUserSession()
+const sessionReady = import.meta.client ? useState('session-ready', () => false) : null
+
+export default defineNuxtRouteMiddleware(async (to) => {
+  const { loggedIn, fetch: fetchSession } = useUserSession()
   const publicRoutes = ['/login', '/register', '/forgot-password', '/reset-password']
 
+  // On client-side (PWA/SPA), fetch the session once before checking auth
+  // to avoid flashing the login page while the session cookie is being verified
+  if (import.meta.client && sessionReady && !sessionReady.value) {
+    await fetchSession()
+    sessionReady.value = true
+  }
+
   if (!loggedIn.value && !publicRoutes.includes(to.path)) {
-    // For OAuth authorize, preserve the full URL as redirect param
     if (to.path === '/oauth/authorize') {
       return navigateTo(`/login?redirect=${encodeURIComponent(to.fullPath)}`)
     }
