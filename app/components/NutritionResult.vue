@@ -41,6 +41,7 @@ const scaledResult = computed<NutritionResult>(() => {
     items: props.result.items.map((item: MealItem) => ({
       ...item,
       quantity: isBarcode.value ? `${portionGrams.value}g` : item.quantity,
+      quantityGrams: isBarcode.value ? portionGrams.value : item.quantityGrams,
       calories: Math.round(item.calories * m),
       protein: Math.round(item.protein * m * 10) / 10,
       carbs: Math.round(item.carbs * m * 10) / 10,
