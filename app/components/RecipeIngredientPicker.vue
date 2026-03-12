@@ -86,66 +86,64 @@ async function onBarcodeResult(result: NutritionResult) {
     const item = result.items?.[0]
     if (!item) return
 
-    // If the item already has a productId in our DB, use it directly
+    // NutritionResult already handled quantity selection — use it directly.
+    // item.calories is scaled to the portion; de-scale to per-100g for the product.
+    const qty = item.quantityGrams ?? result.servingGrams ?? 100
+    const s = 100 / qty
+    const cal = Math.round(item.calories * s)
+    const pro = Math.round(item.protein * s * 10) / 10
+    const car = Math.round(item.carbs * s * 10) / 10
+    const fat = Math.round(item.fat * s * 10) / 10
+
+    let productId: string
+    let name: string
+    let brand: string | null
+    let image: string | null
+
     if (item.productId) {
-      pending.value = {
-        productId: item.productId,
-        name: result.productName ?? item.name,
-        brand: result.brand ?? null,
-        image: result.image ?? null,
-        calories: item.calories,
-        protein: item.protein,
-        carbs: item.carbs,
-        fat: item.fat,
-        servingGrams: result.servingGrams ?? null
-      }
-      quantityGrams.value = result.servingGrams ? Math.round(result.servingGrams) : 100
-      return
+      productId = item.productId
+      name = result.productName ?? item.name
+      brand = result.brand ?? null
+      image = result.image ?? null
+    } else {
+      // Upsert the product in DB to get an ID (store per-100g values)
+      const product = await $fetch('/api/products', {
+        method: 'POST',
+        body: {
+          name: result.productName ?? item.name,
+          barcode: result.barcode,
+          brand: result.brand,
+          image: result.image,
+          servingSize: result.servingSize,
+          calories: cal,
+          protein: pro,
+          carbs: car,
+          fat: fat,
+          fiber: item.fiber != null ? Math.round(item.fiber * s * 10) / 10 : null,
+          sugar: item.sugar != null ? Math.round(item.sugar * s * 10) / 10 : null,
+          saturatedFat: item.saturatedFat != null ? Math.round(item.saturatedFat * s * 10) / 10 : null,
+          salt: item.salt != null ? Math.round(item.salt * s * 100) / 100 : null,
+          novaGroup: result.novaGroup,
+          nutriScore: result.nutriScore,
+          nutriscoreScore: result.nutriscoreScore,
+          origins: result.origins,
+          ingredients: result.ingredients,
+          labelsTags: result.labelsTags,
+          additivesTags: result.additivesTags,
+          fattyAcids: result.fattyAcids,
+          sugarsDetail: result.sugarsDetail,
+          aminoAcids: result.aminoAcids,
+          mineralsDetail: result.mineralsDetail
+        }
+      }) as { id: string, name: string, brand: string | null, image: string | null }
+      productId = product.id
+      name = product.name
+      brand = product.brand
+      image = product.image
     }
 
-    // Upsert the product in DB to get an ID
-    const product = await $fetch('/api/products', {
-      method: 'POST',
-      body: {
-        name: result.productName ?? item.name,
-        barcode: result.barcode,
-        brand: result.brand,
-        image: result.image,
-        servingSize: result.servingSize,
-        calories: item.calories,
-        protein: item.protein,
-        carbs: item.carbs,
-        fat: item.fat,
-        fiber: item.fiber,
-        sugar: item.sugar,
-        saturatedFat: item.saturatedFat,
-        salt: item.salt,
-        novaGroup: result.novaGroup,
-        nutriScore: result.nutriScore,
-        nutriscoreScore: result.nutriscoreScore,
-        origins: result.origins,
-        ingredients: result.ingredients,
-        labelsTags: result.labelsTags,
-        additivesTags: result.additivesTags,
-        fattyAcids: result.fattyAcids,
-        sugarsDetail: result.sugarsDetail,
-        aminoAcids: result.aminoAcids,
-        mineralsDetail: result.mineralsDetail
-      }
-    }) as { id: string, name: string, brand: string | null, image: string | null, calories: number, protein: number, carbs: number, fat: number }
-
-    pending.value = {
-      productId: product.id,
-      name: product.name,
-      brand: product.brand,
-      image: product.image,
-      calories: product.calories,
-      protein: product.protein,
-      carbs: product.carbs,
-      fat: product.fat,
-      servingGrams: result.servingGrams ?? null
-    }
-    quantityGrams.value = result.servingGrams ? Math.round(result.servingGrams) : 100
+    // Auto-emit: quantity was already chosen in NutritionResult — no second step needed
+    emit('add', { productId, name, brand, image, calories: cal, protein: pro, carbs: car, fat: fat, quantityGrams: qty })
   } catch {
     toast.add({ title: t('common.error'), color: 'error' })
   } finally {
