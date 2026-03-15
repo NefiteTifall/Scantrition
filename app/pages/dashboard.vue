@@ -1,8 +1,9 @@
 <script setup lang="ts">
+const route = useRoute()
 const { t } = useI18n()
 
 const today = new Date().toISOString().split('T')[0] ?? ''
-const currentDate = ref(today)
+const currentDate = ref((route.query.date as string) || today)
 
 const { data: meals, refresh: refreshMeals } = await useFetch('/api/meals', {
   query: computed(() => ({ date: currentDate.value }))
@@ -172,7 +173,7 @@ async function fetchSuggestions() {
       >
         <!-- Tappable header row -->
         <NuxtLink
-          :to="`/add/${cat}`"
+          :to="`/add/${cat}?date=${currentDate}`"
           class="flex items-center gap-3 px-4 py-4 active:bg-[var(--ui-bg-elevated)] transition-colors"
         >
           <!-- Icon -->

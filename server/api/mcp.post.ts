@@ -3,8 +3,8 @@ import { requireAuth } from '../utils/apiAuth'
 import { getAIProvider, extractProviderError } from '../utils/ai'
 import { createMCPSession, getMCPSession, purgeExpiredSessions } from '../utils/mcpSessions'
 import { db } from '../db'
-import { meals, mealItems, userGoals, weightEntries, userFavoriteProducts, products } from '../db/schema'
-import { eq, sql, desc, and, inArray } from 'drizzle-orm'
+import { meals, mealItems, userGoals, weightEntries, userFavoriteProducts, products, recipes, recipeProducts } from '../db/schema'
+import { eq, sql, desc, and, inArray, ilike, or } from 'drizzle-orm'
 
 const MCP_VERSION = '2025-11-25'
 
@@ -215,6 +215,91 @@ const TOOLS = [
     },
     annotations: {
       title: 'Log Favorite Meal',
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false
+    }
+  },
+  {
+    name: 'search_products',
+    description: 'Search products in the user\'s database by name or brand. Returns matching products with their nutrition info (per 100g).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Search query (min 2 characters) — matches product name or brand' }
+      },
+      required: ['query']
+    },
+    annotations: {
+      title: 'Search Products',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    }
+  },
+  {
+    name: 'get_recipes',
+    description: 'Get the user\'s saved recipes with their ingredients and nutrition info (per 100g).',
+    inputSchema: { type: 'object', properties: {} },
+    annotations: {
+      title: 'My Recipes',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    }
+  },
+  {
+    name: 'create_recipe',
+    description: 'Create a new recipe from a list of product ingredients. Each ingredient references a product by its ID and specifies a quantity in grams. Use search_products first to find product IDs.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Recipe name (e.g. "Salade niçoise")' },
+        description: { type: 'string', description: 'Optional recipe description' },
+        ingredients: {
+          type: 'array',
+          description: 'List of ingredients with product IDs and quantities',
+          items: {
+            type: 'object',
+            properties: {
+              product_id: { type: 'string', description: 'UUID of the product (use search_products to find)' },
+              quantity_grams: { type: 'number', description: 'Quantity in grams' }
+            },
+            required: ['product_id', 'quantity_grams']
+          }
+        }
+      },
+      required: ['name', 'ingredients']
+    },
+    annotations: {
+      title: 'Create Recipe',
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false
+    }
+  },
+  {
+    name: 'log_recipe',
+    description: 'Log a recipe to today\'s journal with a specified portion size in grams. Nutrition is calculated proportionally from the recipe\'s per-100g values.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        recipe_id: { type: 'string', description: 'UUID of the recipe to log (use get_recipes to find)' },
+        portion_grams: { type: 'number', description: 'Portion size in grams (e.g. 300 for a 300g serving)' },
+        meal_category: {
+          type: 'string',
+          enum: ['breakfast', 'lunch', 'snack', 'dinner'],
+          description: 'Meal category (optional)'
+        }
+      },
+      required: ['recipe_id', 'portion_grams']
+    },
+    annotations: {
+      title: 'Log Recipe',
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: false,
@@ -585,6 +670,256 @@ async function executeTool(name: string, args: Record<string, unknown>, userId: 
       fiber: p.fiber ?? null
     })
     return { logged: true, meal_id: logged.id, name: favName, calories: Math.round(p.calories) }
+  }
+
+  if (name === 'search_products') {
+    const query = String(args.query ?? '').trim()
+    if (query.length < 2) throw new Error('Query must be at least 2 characters')
+    const results = await db
+      .select({
+        id: products.id,
+        name: products.name,
+        brand: products.brand,
+        image: products.image,
+        barcode: products.barcode,
+        servingSize: products.servingSize,
+        calories: products.calories,
+        protein: products.protein,
+        carbs: products.carbs,
+        fat: products.fat,
+        fiber: products.fiber,
+        sugar: products.sugar,
+        saturatedFat: products.saturatedFat,
+        salt: products.salt,
+        nutriScore: products.nutriScore,
+        novaGroup: products.novaGroup
+      })
+      .from(products)
+      .where(and(
+        eq(products.userId, userId),
+        or(
+          ilike(products.name, `%${query}%`),
+          ilike(products.brand, `%${query}%`)
+        )
+      ))
+      .limit(20)
+    return {
+      query,
+      count: results.length,
+      products: results.map(p => ({
+        ...p,
+        calories: Math.round(p.calories),
+        protein: Math.round(p.protein * 10) / 10,
+        carbs: Math.round(p.carbs * 10) / 10,
+        fat: Math.round(p.fat * 10) / 10,
+        fiber: p.fiber != null ? Math.round(p.fiber * 10) / 10 : null,
+        note: 'Nutrition values are per 100g'
+      }))
+    }
+  }
+
+  if (name === 'get_recipes') {
+    const recipeRows = await db.select().from(recipes).where(eq(recipes.userId, userId))
+    if (!recipeRows.length) return { recipes: [], count: 0 }
+
+    const allRp = await db
+      .select({
+        recipeId: recipeProducts.recipeId,
+        productId: recipeProducts.productId,
+        quantityGrams: recipeProducts.quantityGrams,
+        order: recipeProducts.order,
+        productName: products.name,
+        productCalories: products.calories,
+        productProtein: products.protein,
+        productCarbs: products.carbs,
+        productFat: products.fat,
+        productFiber: products.fiber
+      })
+      .from(recipeProducts)
+      .innerJoin(products, eq(recipeProducts.productId, products.id))
+      .where(eq(products.userId, userId))
+
+    const rpByRecipe = new Map<string, typeof allRp>()
+    for (const rp of allRp) {
+      const list = rpByRecipe.get(rp.recipeId) ?? []
+      list.push(rp)
+      rpByRecipe.set(rp.recipeId, list)
+    }
+
+    return {
+      count: recipeRows.length,
+      recipes: recipeRows.map(recipe => {
+        const rps = rpByRecipe.get(recipe.id) ?? []
+        const totalWeight = rps.reduce((s, rp) => s + rp.quantityGrams, 0)
+        const factor = totalWeight > 0 ? 100 / totalWeight : 0
+        return {
+          id: recipe.id,
+          name: recipe.name,
+          description: recipe.description,
+          totalWeightGrams: totalWeight,
+          ingredients: rps.sort((a, b) => a.order - b.order).map(rp => ({
+            productId: rp.productId,
+            name: rp.productName,
+            quantityGrams: rp.quantityGrams
+          })),
+          nutrition100g: {
+            calories: Math.round(rps.reduce((s, rp) => s + rp.productCalories * rp.quantityGrams / 100, 0) * factor),
+            protein: Math.round(rps.reduce((s, rp) => s + rp.productProtein * rp.quantityGrams / 100, 0) * factor * 10) / 10,
+            carbs: Math.round(rps.reduce((s, rp) => s + rp.productCarbs * rp.quantityGrams / 100, 0) * factor * 10) / 10,
+            fat: Math.round(rps.reduce((s, rp) => s + rp.productFat * rp.quantityGrams / 100, 0) * factor * 10) / 10,
+            fiber: Math.round(rps.reduce((s, rp) => s + (rp.productFiber ?? 0) * rp.quantityGrams / 100, 0) * factor * 10) / 10
+          }
+        }
+      })
+    }
+  }
+
+  if (name === 'create_recipe') {
+    const recipeName = String(args.name ?? '').trim()
+    if (!recipeName) throw new Error('name is required')
+    const ingredients = args.ingredients as Array<{ product_id: string, quantity_grams: number }> | undefined
+    if (!ingredients?.length) throw new Error('At least one ingredient is required')
+
+    // Validate all product IDs belong to the user
+    const productIds = ingredients.map(i => String(i.product_id))
+    const foundProducts = await db
+      .select({ id: products.id, name: products.name })
+      .from(products)
+      .where(and(eq(products.userId, userId), inArray(products.id, productIds)))
+    const foundIds = new Set(foundProducts.map(p => p.id))
+    const missing = productIds.filter(id => !foundIds.has(id))
+    if (missing.length) throw new Error(`Products not found: ${missing.join(', ')}. Use search_products to find valid product IDs.`)
+
+    const [recipe] = await db.insert(recipes).values({
+      userId,
+      name: recipeName,
+      description: args.description ? String(args.description) : null
+    }).returning()
+    if (!recipe) throw new Error('Failed to create recipe')
+
+    await db.insert(recipeProducts).values(
+      ingredients.map((ing, idx) => ({
+        recipeId: recipe.id,
+        productId: String(ing.product_id),
+        quantityGrams: Number(ing.quantity_grams),
+        order: idx
+      }))
+    )
+
+    return {
+      created: true,
+      recipe_id: recipe.id,
+      name: recipeName,
+      ingredient_count: ingredients.length
+    }
+  }
+
+  if (name === 'log_recipe') {
+    const recipeId = String(args.recipe_id ?? '')
+    if (!recipeId) throw new Error('recipe_id is required')
+    const portionGrams = Number(args.portion_grams)
+    if (!portionGrams || portionGrams <= 0) throw new Error('portion_grams must be a positive number')
+
+    // Fetch recipe + ingredients
+    const recipe = await db.query.recipes.findFirst({
+      where: and(eq(recipes.id, recipeId), eq(recipes.userId, userId))
+    })
+    if (!recipe) throw new Error('Recipe not found or does not belong to you')
+
+    const rps = await db
+      .select({
+        quantityGrams: recipeProducts.quantityGrams,
+        productCalories: products.calories,
+        productProtein: products.protein,
+        productCarbs: products.carbs,
+        productFat: products.fat,
+        productFiber: products.fiber,
+        productSugar: products.sugar,
+        productSaturatedFat: products.saturatedFat,
+        productSalt: products.salt
+      })
+      .from(recipeProducts)
+      .innerJoin(products, eq(recipeProducts.productId, products.id))
+      .where(eq(recipeProducts.recipeId, recipeId))
+
+    if (!rps.length) throw new Error('Recipe has no ingredients')
+
+    const totalWeight = rps.reduce((s, rp) => s + rp.quantityGrams, 0)
+    const factor = totalWeight > 0 ? 100 / totalWeight : 0
+
+    // Nutrition per 100g
+    const n100 = {
+      calories: rps.reduce((s, rp) => s + rp.productCalories * rp.quantityGrams / 100, 0) * factor,
+      protein: rps.reduce((s, rp) => s + rp.productProtein * rp.quantityGrams / 100, 0) * factor,
+      carbs: rps.reduce((s, rp) => s + rp.productCarbs * rp.quantityGrams / 100, 0) * factor,
+      fat: rps.reduce((s, rp) => s + rp.productFat * rp.quantityGrams / 100, 0) * factor,
+      fiber: rps.reduce((s, rp) => s + (rp.productFiber ?? 0) * rp.quantityGrams / 100, 0) * factor,
+      sugar: rps.reduce((s, rp) => s + (rp.productSugar ?? 0) * rp.quantityGrams / 100, 0) * factor,
+      saturatedFat: rps.reduce((s, rp) => s + (rp.productSaturatedFat ?? 0) * rp.quantityGrams / 100, 0) * factor,
+      salt: rps.reduce((s, rp) => s + (rp.productSalt ?? 0) * rp.quantityGrams / 100, 0) * factor
+    }
+
+    // Scale to portion
+    const m = portionGrams / 100
+    const portion = {
+      calories: Math.round(n100.calories * m),
+      protein: Math.round(n100.protein * m * 10) / 10,
+      carbs: Math.round(n100.carbs * m * 10) / 10,
+      fat: Math.round(n100.fat * m * 10) / 10,
+      fiber: Math.round(n100.fiber * m * 10) / 10,
+      sugar: Math.round(n100.sugar * m * 10) / 10,
+      saturatedFat: Math.round(n100.saturatedFat * m * 10) / 10,
+      salt: Math.round(n100.salt * m * 100) / 100
+    }
+
+    const validCategories = ['breakfast', 'lunch', 'snack', 'dinner']
+    const mealCategory = validCategories.includes(String(args.meal_category ?? ''))
+      ? String(args.meal_category) as 'breakfast' | 'lunch' | 'snack' | 'dinner'
+      : null
+
+    const [logged] = await db.insert(meals).values({
+      userId,
+      date: today,
+      type: 'recipe',
+      mealCategory,
+      totalCalories: portion.calories,
+      totalProtein: portion.protein,
+      totalCarbs: portion.carbs,
+      totalFat: portion.fat,
+      totalFiber: portion.fiber,
+      totalSugar: portion.sugar,
+      totalSaturatedFat: portion.saturatedFat,
+      totalSalt: portion.salt,
+      confidence: 1
+    }).returning()
+    if (!logged) throw new Error('Failed to log recipe')
+
+    await db.insert(mealItems).values({
+      mealId: logged.id,
+      recipeId: recipe.id,
+      name: recipe.name,
+      quantityText: `${portionGrams}g`,
+      quantityGrams: portionGrams,
+      calories: portion.calories,
+      protein: portion.protein,
+      carbs: portion.carbs,
+      fat: portion.fat,
+      fiber: portion.fiber,
+      sugar: portion.sugar,
+      saturatedFat: portion.saturatedFat,
+      salt: portion.salt
+    })
+
+    return {
+      logged: true,
+      meal_id: logged.id,
+      recipe: recipe.name,
+      portion: `${portionGrams}g`,
+      calories: portion.calories,
+      protein: portion.protein,
+      carbs: portion.carbs,
+      fat: portion.fat
+    }
   }
 
   throw new Error(`Unknown tool: ${name}`)

@@ -2,6 +2,7 @@
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
+const toast = useToast()
 
 interface Ingredient {
   text: string
@@ -126,6 +127,72 @@ const displayAdditives = computed(() =>
 )
 
 const showIngredients = ref(false)
+
+// Add to journal
+type MealCategory = 'breakfast' | 'lunch' | 'snack' | 'dinner'
+const showAddModal = ref(false)
+const addingToJournal = ref(false)
+
+const categoryOrder: MealCategory[] = ['breakfast', 'lunch', 'snack', 'dinner']
+const addCategoryMeta: Record<MealCategory, { icon: string, colorClass: string, bgClass: string }> = {
+  breakfast: { icon: 'i-lucide-sunrise', colorClass: 'text-orange-400', bgClass: 'bg-orange-400/15' },
+  lunch: { icon: 'i-lucide-sun', colorClass: 'text-green-400', bgClass: 'bg-green-400/15' },
+  snack: { icon: 'i-lucide-apple', colorClass: 'text-violet-400', bgClass: 'bg-violet-400/15' },
+  dinner: { icon: 'i-lucide-moon', colorClass: 'text-blue-400', bgClass: 'bg-blue-400/15' }
+}
+
+async function addToJournal(cat: MealCategory) {
+  if (!product.value) return
+  addingToJournal.value = true
+  const p = product.value
+  try {
+    const todayDate = new Date().toISOString().split('T')[0] ?? ''
+    await $fetch('/api/meals', {
+      method: 'POST',
+      body: {
+        date: todayDate,
+        type: 'product',
+        mealCategory: cat,
+        items: [{
+          productId: p.id,
+          name: p.name,
+          quantity: p.servingSize ?? '100g',
+          calories: p.calories,
+          protein: p.protein,
+          carbs: p.carbs,
+          fat: p.fat,
+          fiber: p.fiber ?? undefined,
+          sugar: p.sugar ?? undefined,
+          saturatedFat: p.saturatedFat ?? undefined,
+          salt: p.salt ?? undefined
+        }],
+        totalCalories: p.calories,
+        totalProtein: p.protein,
+        totalCarbs: p.carbs,
+        totalFat: p.fat,
+        totalFiber: p.fiber,
+        totalSugar: p.sugar,
+        totalSaturatedFat: p.saturatedFat,
+        totalSalt: p.salt,
+        nutriScore: p.nutriScore,
+        confidence: 1,
+        productName: p.name,
+        productBarcode: p.barcode,
+        productBrand: p.brand,
+        productImage: p.image,
+        productServingSize: p.servingSize,
+        productNovaGroup: p.novaGroup,
+        productOrigins: p.origins
+      }
+    })
+    toast.add({ title: t('add.mealAdded'), color: 'success', icon: 'i-lucide-check-circle' })
+    showAddModal.value = false
+  } catch {
+    toast.add({ title: t('common.error'), color: 'error' })
+  } finally {
+    addingToJournal.value = false
+  }
+}
 
 // Vitamins & minerals to display (only non-null)
 const vitamins = computed(() => {
@@ -264,6 +331,18 @@ const extendedFats = computed(() => {
         :key="label"
         class="text-xs px-2 py-0.5 rounded-full bg-green-500/10 text-green-700 dark:text-green-400 font-medium"
       >{{ label }}</span>
+    </div>
+
+    <!-- Add to journal button -->
+    <div class="mx-4 mb-4">
+      <UButton
+        block
+        icon="i-lucide-plus"
+        size="lg"
+        @click="showAddModal = true"
+      >
+        {{ t('add.addToJournal') }}
+      </UButton>
     </div>
 
     <!-- Calories highlight -->
@@ -492,5 +571,39 @@ const extendedFats = computed(() => {
         </div>
       </div>
     </div>
+
+    <!-- Add to journal modal -->
+    <UModal
+      :open="showAddModal"
+      :title="t('add.addToJournal')"
+      @update:open="(v) => { if (!v) showAddModal = false }"
+    >
+      <template #body>
+        <div class="space-y-2">
+          <p class="text-sm text-[var(--ui-text-muted)] mb-3">
+            {{ t('mealCategory.label') }}
+          </p>
+          <button
+            v-for="cat in categoryOrder"
+            :key="cat"
+            class="flex items-center gap-3 w-full px-4 py-3 rounded-xl border border-[var(--ui-border)] hover:bg-[var(--ui-bg-elevated)] active:bg-[var(--ui-bg-elevated)] transition-colors"
+            :disabled="addingToJournal"
+            @click="addToJournal(cat)"
+          >
+            <div
+              class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+              :class="addCategoryMeta[cat].bgClass"
+            >
+              <UIcon
+                :name="addCategoryMeta[cat].icon"
+                class="w-4 h-4"
+                :class="addCategoryMeta[cat].colorClass"
+              />
+            </div>
+            <span class="font-medium text-sm">{{ t(`mealCategory.${cat}`) }}</span>
+          </button>
+        </div>
+      </template>
+    </UModal>
   </div>
 </template>

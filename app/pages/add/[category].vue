@@ -83,10 +83,11 @@ interface Meal {
 }
 
 const todayDate = new Date().toISOString().split('T')[0] ?? ''
+const selectedDate = (route.query.date as string) || todayDate
 
 const [{ data: favorites, refresh: refreshFavorites }, { data: todayMeals, refresh: refreshMeals }, { data: goals }] = await Promise.all([
   useFetch<FavoriteProduct[]>('/api/favorites'),
-  useFetch<Meal[]>('/api/meals', { query: { date: todayDate } }),
+  useFetch<Meal[]>('/api/meals', { query: { date: selectedDate } }),
   useFetch<{ calories: number, protein: number, carbs: number, fat: number }>('/api/goals')
 ])
 
@@ -196,7 +197,7 @@ async function addToJournal(result: NutritionResult, type: string = activeMode.v
     await $fetch('/api/meals', {
       method: 'POST',
       body: {
-        date: todayDate,
+        date: selectedDate,
         type,
         mealCategory: category,
         items: result.items,
@@ -313,9 +314,17 @@ async function deleteFavorite(id: string) {
           :class="meta.colorClass"
         />
       </div>
-      <h1 class="text-base font-bold flex-1">
-        {{ t(`mealCategory.${category}`) }}
-      </h1>
+      <div class="flex-1 min-w-0">
+        <h1 class="text-base font-bold">
+          {{ t(`mealCategory.${category}`) }}
+        </h1>
+        <p
+          v-if="selectedDate !== todayDate"
+          class="text-xs text-[var(--ui-text-muted)]"
+        >
+          {{ new Date(selectedDate + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) }}
+        </p>
+      </div>
       <span
         v-if="mealsInCategory.length"
         class="text-sm font-semibold text-primary"
