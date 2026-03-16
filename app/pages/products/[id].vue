@@ -133,18 +133,38 @@ type MealCategory = 'breakfast' | 'lunch' | 'snack' | 'dinner'
 const showAddModal = ref(false)
 const addingToJournal = ref(false)
 
-const categoryOrder: MealCategory[] = ['breakfast', 'lunch', 'snack', 'dinner']
-const addCategoryMeta: Record<MealCategory, { icon: string, colorClass: string, bgClass: string }> = {
-  breakfast: { icon: 'i-lucide-sunrise', colorClass: 'text-orange-400', bgClass: 'bg-orange-400/15' },
-  lunch: { icon: 'i-lucide-sun', colorClass: 'text-green-400', bgClass: 'bg-green-400/15' },
-  snack: { icon: 'i-lucide-apple', colorClass: 'text-violet-400', bgClass: 'bg-violet-400/15' },
-  dinner: { icon: 'i-lucide-moon', colorClass: 'text-blue-400', bgClass: 'bg-blue-400/15' }
-}
+const mealCategories: MealCategory[] = ['breakfast', 'lunch', 'snack', 'dinner']
+const selectedCategory = ref<MealCategory>('lunch')
 
-async function addToJournal(cat: MealCategory) {
-  if (!product.value) return
+const defaultPortionGrams = (() => {
+  const s = product.value?.servingSize
+  if (!s) return 100
+  const m = s.match(/(\d+(?:\.\d+)?)\s*g/i)
+  return m ? parseFloat(m[1]) : 100
+})()
+const portionGrams = ref(defaultPortionGrams)
+
+const portionNutrition = computed(() => {
+  const p = product.value
+  if (!p) return null
+  const m = portionGrams.value / 100
+  return {
+    calories: Math.round(p.calories * m),
+    protein: Math.round(p.protein * m * 10) / 10,
+    carbs: Math.round(p.carbs * m * 10) / 10,
+    fat: Math.round(p.fat * m * 10) / 10,
+    fiber: p.fiber != null ? Math.round(p.fiber * m * 10) / 10 : null,
+    sugar: p.sugar != null ? Math.round(p.sugar * m * 10) / 10 : null,
+    saturatedFat: p.saturatedFat != null ? Math.round(p.saturatedFat * m * 10) / 10 : null,
+    salt: p.salt != null ? Math.round(p.salt * m * 100) / 100 : null
+  }
+})
+
+async function addToJournal() {
+  if (!product.value || !portionNutrition.value) return
   addingToJournal.value = true
   const p = product.value
+  const n = portionNutrition.value
   try {
     const todayDate = new Date().toISOString().split('T')[0] ?? ''
     await $fetch('/api/meals', {
@@ -152,28 +172,28 @@ async function addToJournal(cat: MealCategory) {
       body: {
         date: todayDate,
         type: 'product',
-        mealCategory: cat,
+        mealCategory: selectedCategory.value,
         items: [{
           productId: p.id,
           name: p.name,
-          quantity: p.servingSize ?? '100g',
-          calories: p.calories,
-          protein: p.protein,
-          carbs: p.carbs,
-          fat: p.fat,
-          fiber: p.fiber ?? undefined,
-          sugar: p.sugar ?? undefined,
-          saturatedFat: p.saturatedFat ?? undefined,
-          salt: p.salt ?? undefined
+          quantity: `${portionGrams.value}g`,
+          calories: n.calories,
+          protein: n.protein,
+          carbs: n.carbs,
+          fat: n.fat,
+          fiber: n.fiber ?? undefined,
+          sugar: n.sugar ?? undefined,
+          saturatedFat: n.saturatedFat ?? undefined,
+          salt: n.salt ?? undefined
         }],
-        totalCalories: p.calories,
-        totalProtein: p.protein,
-        totalCarbs: p.carbs,
-        totalFat: p.fat,
-        totalFiber: p.fiber,
-        totalSugar: p.sugar,
-        totalSaturatedFat: p.saturatedFat,
-        totalSalt: p.salt,
+        totalCalories: n.calories,
+        totalProtein: n.protein,
+        totalCarbs: n.carbs,
+        totalFat: n.fat,
+        totalFiber: n.fiber,
+        totalSugar: n.sugar,
+        totalSaturatedFat: n.saturatedFat,
+        totalSalt: n.salt,
         nutriScore: p.nutriScore,
         confidence: 1,
         productName: p.name,
@@ -579,29 +599,107 @@ const extendedFats = computed(() => {
       @update:open="(v) => { if (!v) showAddModal = false }"
     >
       <template #body>
-        <div class="space-y-2">
-          <p class="text-sm text-[var(--ui-text-muted)] mb-3">
-            {{ t('mealCategory.label') }}
-          </p>
-          <button
-            v-for="cat in categoryOrder"
-            :key="cat"
-            class="flex items-center gap-3 w-full px-4 py-3 rounded-xl border border-[var(--ui-border)] hover:bg-[var(--ui-bg-elevated)] active:bg-[var(--ui-bg-elevated)] transition-colors"
-            :disabled="addingToJournal"
-            @click="addToJournal(cat)"
-          >
-            <div
-              class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-              :class="addCategoryMeta[cat].bgClass"
-            >
-              <UIcon
-                :name="addCategoryMeta[cat].icon"
-                class="w-4 h-4"
-                :class="addCategoryMeta[cat].colorClass"
-              />
+        <div class="space-y-4">
+          <!-- Category selector -->
+          <div>
+            <p class="text-sm text-[var(--ui-text-muted)] mb-2">
+              {{ t('mealCategory.label') }}
+            </p>
+            <div class="grid grid-cols-4 gap-1 bg-[var(--ui-border)] rounded-xl p-1">
+              <button
+                v-for="cat in mealCategories"
+                :key="cat"
+                class="flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-lg text-xs font-medium transition-all"
+                :class="selectedCategory === cat
+                  ? 'bg-[var(--ui-bg)] shadow text-primary'
+                  : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]'"
+                @click="selectedCategory = cat"
+              >
+                {{ t(`mealCategory.${cat}`) }}
+              </button>
             </div>
-            <span class="font-medium text-sm">{{ t(`mealCategory.${cat}`) }}</span>
-          </button>
+          </div>
+
+          <!-- Portion input -->
+          <div class="flex items-center gap-3">
+            <span class="text-sm text-[var(--ui-text-muted)] shrink-0">
+              {{ t('recipes.portionGrams') }}
+            </span>
+            <UInput
+              v-model.number="portionGrams"
+              type="number"
+              min="1"
+              max="5000"
+              step="10"
+              size="sm"
+              class="w-24"
+            />
+            <span class="text-sm text-[var(--ui-text-muted)]">g</span>
+            <span
+              v-if="product?.servingSize"
+              class="text-xs text-[var(--ui-text-muted)] ml-auto cursor-pointer hover:text-primary"
+              @click="portionGrams = defaultPortionGrams"
+            >↺ {{ product.servingSize }}</span>
+          </div>
+
+          <!-- Nutrition preview -->
+          <div
+            v-if="portionNutrition"
+            class="grid grid-cols-4 gap-2 text-center py-3 rounded-xl bg-[var(--ui-bg-elevated)]"
+          >
+            <div>
+              <p class="text-lg font-bold text-primary">
+                {{ portionNutrition.calories }}
+              </p>
+              <p class="text-xs text-[var(--ui-text-muted)]">
+                kcal
+              </p>
+            </div>
+            <div>
+              <p class="text-base font-semibold">
+                {{ portionNutrition.protein }}g
+              </p>
+              <p class="text-xs text-[var(--ui-text-muted)]">
+                {{ t('dashboard.protein') }}
+              </p>
+            </div>
+            <div>
+              <p class="text-base font-semibold">
+                {{ portionNutrition.carbs }}g
+              </p>
+              <p class="text-xs text-[var(--ui-text-muted)]">
+                {{ t('dashboard.carbs') }}
+              </p>
+            </div>
+            <div>
+              <p class="text-base font-semibold">
+                {{ portionNutrition.fat }}g
+              </p>
+              <p class="text-xs text-[var(--ui-text-muted)]">
+                {{ t('dashboard.fat') }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </template>
+      <template #footer>
+        <div class="flex gap-2 w-full">
+          <UButton
+            variant="outline"
+            color="neutral"
+            class="flex-1"
+            @click="showAddModal = false"
+          >
+            {{ t('common.cancel') }}
+          </UButton>
+          <UButton
+            class="flex-1"
+            :loading="addingToJournal"
+            icon="i-lucide-plus"
+            @click="addToJournal"
+          >
+            {{ t('add.addToJournal') }}
+          </UButton>
         </div>
       </template>
     </UModal>
