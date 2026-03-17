@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import fr from '@nuxt/ui/locale/fr'
+
 const { loggedIn, clear } = useUserSession()
 const { t } = useI18n()
 
@@ -21,7 +23,7 @@ async function logout() {
 </script>
 
 <template>
-  <UApp>
+  <UApp :locale="fr">
     <div class="h-dvh flex flex-col overflow-hidden">
       <header class="shrink-0 z-40 bg-[var(--ui-bg)] border-b border-[var(--ui-border)]">
         <div class="flex items-center justify-between max-w-xl mx-auto px-4 h-14">

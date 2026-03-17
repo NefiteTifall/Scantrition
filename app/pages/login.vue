@@ -8,23 +8,24 @@ const route = useRoute()
 const loading = ref(false)
 const error = ref('')
 
-const fields: AuthFormField[] = [{
+const fields = computed<AuthFormField[]>(() => [{
   name: 'email',
   type: 'email',
-  label: 'Email',
-  placeholder: 'Enter your email',
+  label: t('auth.email'),
+  placeholder: t('auth.emailPlaceholder'),
   required: true
 }, {
   name: 'password',
-  label: 'Password',
+  label: t('auth.password'),
   type: 'password',
-  placeholder: 'Enter your password',
+  placeholder: t('auth.passwordPlaceholder'),
   required: true
 }, {
   name: 'remember',
-  label: 'Remember me',
-  type: 'checkbox'
-}]
+  label: t('auth.rememberMe'),
+  type: 'checkbox',
+  defaultValue: true
+}])
 
 async function login(event: FormSubmitEvent<{ email: string, password: string }>) {
   loading.value = true

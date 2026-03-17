@@ -23,6 +23,12 @@ export default defineNuxtConfig({
     '/register': { prerender: true }
   },
 
+  runtimeConfig: {
+    session: {
+      maxAge: 60 * 60 * 24 * 180 // 180 days – keeps PWA users logged in
+    }
+  },
+
   compatibilityDate: '2025-01-15',
 
   app: {
