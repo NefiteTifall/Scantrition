@@ -1,3 +1,8 @@
+import { db } from '../../../db'
+import { userGoals } from '../../../db/schema'
+import { calcNutritionScore } from '../../../utils/healthScore'
+import { eq } from 'drizzle-orm'
+
 interface OFFNutriments {
   'energy-kcal_100g'?: number
   'energy-kcal'?: number
@@ -132,7 +137,7 @@ function parseServingGrams(s: string | undefined): number | undefined {
 }
 
 export default defineEventHandler(async (event) => {
-  await requireSession(event)
+  const session = await requireSession(event)
   const code = getRouterParam(event, 'code')
 
   if (!code) {
@@ -218,6 +223,20 @@ export default defineEventHandler(async (event) => {
     if (v !== undefined) mineralsDetail[label] = v
   }
 
+  // Compute health score based on user's health goal
+  const [goalsRow] = await db.select().from(userGoals).where(eq(userGoals.userId, session.user.id)).limit(1)
+  const healthGoal = goalsRow?.healthGoal ?? 'balance'
+  const { score: healthScore, label: healthLabel } = calcNutritionScore({
+    calories: Math.round(kcal100g),
+    protein: r1(n['proteins_100g']) ?? 0,
+    carbs: r1(n['carbohydrates_100g']) ?? 0,
+    fat: r1(n['fat_100g']) ?? 0,
+    fiber: r1(n['fiber_100g']),
+    sugar: r1(n['sugars_100g']),
+    saturatedFat: r1(n['saturated-fat_100g']),
+    salt: r2(n['salt_100g'])
+  }, healthGoal)
+
   return {
     items: [{
       name,
@@ -278,6 +297,8 @@ export default defineEventHandler(async (event) => {
     mineralsDetail: Object.keys(mineralsDetail).length > 0 ? mineralsDetail : undefined,
     // Scores & metadata
     nutriScore,
+    healthScore,
+    healthLabel,
     novaGroup: n['nova-group_100g'] != null ? Math.round(n['nova-group_100g']) : undefined,
     nutriscoreScore: product.nutriscore_score,
     confidence: 1,

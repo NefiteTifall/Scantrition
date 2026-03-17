@@ -68,6 +68,14 @@ const scaledResult = computed<NutritionResult>(() => {
   }
 })
 
+// Health score colors & icons
+const healthLabelConfig: Record<string, { color: string, bg: string, icon: string }> = {
+  excellent: { color: 'text-green-600 dark:text-green-400', bg: 'bg-green-500/10', icon: 'i-lucide-thumbs-up' },
+  good: { color: 'text-lime-600 dark:text-lime-400', bg: 'bg-lime-500/10', icon: 'i-lucide-smile' },
+  limit: { color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-500/10', icon: 'i-lucide-alert-triangle' },
+  avoid: { color: 'text-red-600 dark:text-red-400', bg: 'bg-red-500/10', icon: 'i-lucide-ban' }
+}
+
 // NutriScore colors
 const nutriScoreClass: Record<string, string> = {
   A: 'bg-green-500', B: 'bg-lime-500', C: 'bg-yellow-500', D: 'bg-orange-500', E: 'bg-red-500'
@@ -207,6 +215,34 @@ async function saveAsFavorite() {
       >
         {{ t('favorites.confirm') }}
       </UButton>
+    </div>
+
+    <!-- Health score banner -->
+    <div
+      v-if="result.healthLabel"
+      class="flex items-center gap-3 rounded-xl px-4 py-3 mb-4"
+      :class="healthLabelConfig[result.healthLabel]?.bg"
+    >
+      <UIcon
+        :name="healthLabelConfig[result.healthLabel]?.icon"
+        class="w-6 h-6 shrink-0"
+        :class="healthLabelConfig[result.healthLabel]?.color"
+      />
+      <div class="flex-1 min-w-0">
+        <p
+          class="text-sm font-bold"
+          :class="healthLabelConfig[result.healthLabel]?.color"
+        >
+          {{ t('healthLabel.' + result.healthLabel) }}
+        </p>
+        <p class="text-xs text-[var(--ui-text-muted)]">
+          {{ t('healthGoal.label') }}
+        </p>
+      </div>
+      <span
+        class="text-2xl font-black tabular-nums"
+        :class="healthLabelConfig[result.healthLabel]?.color"
+      >{{ result.healthScore }}</span>
     </div>
 
     <!-- Product image -->

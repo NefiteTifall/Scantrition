@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import fr from '@nuxt/ui/locale/fr'
+import { fr } from '@nuxt/ui/locale'
 
 const { loggedIn, clear } = useUserSession()
 const { t } = useI18n()
