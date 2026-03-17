@@ -69,6 +69,7 @@ export interface NutritionResult {
   nutriScore?: 'A' | 'B' | 'C' | 'D' | 'E'
   healthScore?: number
   healthLabel?: 'excellent' | 'good' | 'limit' | 'avoid'
+  healthGoal?: string
   confidence: number
   // Product metadata
   productName?: string

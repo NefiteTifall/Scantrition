@@ -299,6 +299,7 @@ export default defineEventHandler(async (event) => {
     nutriScore,
     healthScore,
     healthLabel,
+    healthGoal,
     novaGroup: n['nova-group_100g'] != null ? Math.round(n['nova-group_100g']) : undefined,
     nutriscoreScore: product.nutriscore_score,
     confidence: 1,

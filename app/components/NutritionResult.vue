@@ -236,7 +236,7 @@ async function saveAsFavorite() {
           {{ t('healthLabel.' + result.healthLabel) }}
         </p>
         <p class="text-xs text-[var(--ui-text-muted)]">
-          {{ t('healthGoal.label') }}
+          {{ result.healthGoal ? t('healthGoal.' + result.healthGoal) : t('healthGoal.label') }}
         </p>
       </div>
       <span
