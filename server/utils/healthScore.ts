@@ -1,8 +1,14 @@
 // ── Criterion scoring functions (per 100g) ──────────────────────────
 
-/** Linear interpolation clamped to 0–100: more = better */
+/**
+ * Square-root curve clamped to 0–100: more = better.
+ * sqrt makes the curve forgiving for moderate values (5g protein → 45 instead of 20)
+ * while still scoring 0 for truly absent nutrients (0g protein → 0).
+ * Used for "positive" criteria (protein, fiber, carbs).
+ */
 function positiveScore(value: number, max: number): number {
-  return Math.max(0, Math.min(100, (value / max) * 100))
+  if (value <= 0) return 0
+  return Math.min(100, Math.sqrt(value / max) * 100)
 }
 
 /** Linear interpolation clamped to 0–100: less = better */
