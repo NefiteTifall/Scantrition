@@ -141,7 +141,8 @@ export default defineEventHandler(async (event) => {
         fiber: item.fiber,
         sugar: item.sugar,
         saturatedFat: item.saturatedFat,
-        salt: item.salt
+        salt: item.salt,
+        novaGroup: body.productNovaGroup ?? null
       }, healthGoal)
 
       const qg = item.quantityGrams

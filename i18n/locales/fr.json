@@ -298,6 +298,18 @@
     "limit": "À limiter",
     "avoid": "À éviter"
   },
+  "healthCriteria": {
+    "protein": "Protéines",
+    "proteinDensity": "Densité protéique",
+    "fiber": "Fibres",
+    "carbs": "Glucides",
+    "sugar": "Sucre",
+    "salt": "Sel",
+    "saturatedFat": "Graisses saturées",
+    "caloricDensity": "Densité calorique",
+    "nova": "Transformation (NOVA)",
+    "details": "Détail du score"
+  },
   "settings": {
     "title": "Paramètres",
     "goalsTitle": "Objectifs quotidiens",

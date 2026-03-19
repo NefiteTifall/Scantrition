@@ -112,6 +112,16 @@ const displayAdditives = computed(() =>
   )]
 )
 
+const showBreakdown = ref(false)
+
+// Criterion bar colors based on score
+function criterionBarColor(score: number): string {
+  if (score >= 75) return 'bg-green-500'
+  if (score >= 50) return 'bg-lime-500'
+  if (score >= 25) return 'bg-orange-500'
+  return 'bg-red-500'
+}
+
 const showIngredients = ref(false)
 
 // Favorites
@@ -243,6 +253,46 @@ async function saveAsFavorite() {
         class="text-2xl font-black tabular-nums"
         :class="healthLabelConfig[result.healthLabel]?.color"
       >{{ result.healthScore }}</span>
+    </div>
+
+    <!-- Health score breakdown -->
+    <div
+      v-if="result.healthBreakdown?.length"
+      class="mb-4 -mt-2"
+    >
+      <button
+        class="flex items-center gap-1 text-xs font-medium text-[var(--ui-text-muted)] w-full mb-2"
+        @click="showBreakdown = !showBreakdown"
+      >
+        <UIcon
+          :name="showBreakdown ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+          class="w-3.5 h-3.5"
+        />
+        {{ t('healthCriteria.details') }}
+      </button>
+      <div
+        v-if="showBreakdown"
+        class="space-y-2"
+      >
+        <div
+          v-for="item in result.healthBreakdown"
+          :key="item.key"
+          class="flex items-center gap-2"
+        >
+          <span class="text-xs text-[var(--ui-text-muted)] w-28 shrink-0 truncate">
+            {{ t('healthCriteria.' + item.key) }}
+          </span>
+          <div class="flex-1 h-2 rounded-full bg-[var(--ui-bg-elevated)] overflow-hidden">
+            <div
+              class="h-full rounded-full transition-all"
+              :class="criterionBarColor(item.score)"
+              :style="{ width: item.score + '%' }"
+            />
+          </div>
+          <span class="text-xs tabular-nums font-medium w-8 text-right">{{ item.score }}</span>
+          <span class="text-[10px] text-[var(--ui-text-muted)] w-8 text-right">×{{ Math.round(item.weight * 100) }}%</span>
+        </div>
+      </div>
     </div>
 
     <!-- Product image -->

@@ -23,6 +23,13 @@ export interface MealItem {
   healthLabel?: 'excellent' | 'good' | 'limit' | 'avoid'
 }
 
+export interface HealthBreakdownItem {
+  key: string
+  score: number
+  weight: number
+  contribution: number
+}
+
 export interface NutritionResult {
   items: MealItem[]
   // Core totals
@@ -69,6 +76,7 @@ export interface NutritionResult {
   nutriScore?: 'A' | 'B' | 'C' | 'D' | 'E'
   healthScore?: number
   healthLabel?: 'excellent' | 'good' | 'limit' | 'avoid'
+  healthBreakdown?: HealthBreakdownItem[]
   healthGoal?: string
   confidence: number
   // Product metadata

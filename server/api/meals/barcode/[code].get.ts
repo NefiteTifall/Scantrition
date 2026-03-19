@@ -226,7 +226,7 @@ export default defineEventHandler(async (event) => {
   // Compute health score based on user's health goal
   const [goalsRow] = await db.select().from(userGoals).where(eq(userGoals.userId, session.user.id)).limit(1)
   const healthGoal = goalsRow?.healthGoal ?? 'balance'
-  const { score: healthScore, label: healthLabel } = calcNutritionScore({
+  const { score: healthScore, label: healthLabel, breakdown: healthBreakdown } = calcNutritionScore({
     calories: Math.round(kcal100g),
     protein: r1(n['proteins_100g']) ?? 0,
     carbs: r1(n['carbohydrates_100g']) ?? 0,
@@ -234,7 +234,8 @@ export default defineEventHandler(async (event) => {
     fiber: r1(n['fiber_100g']),
     sugar: r1(n['sugars_100g']),
     saturatedFat: r1(n['saturated-fat_100g']),
-    salt: r2(n['salt_100g'])
+    salt: r2(n['salt_100g']),
+    novaGroup: n['nova-group_100g'] != null ? Math.round(n['nova-group_100g']) : null
   }, healthGoal)
 
   return {
@@ -299,6 +300,7 @@ export default defineEventHandler(async (event) => {
     nutriScore,
     healthScore,
     healthLabel,
+    healthBreakdown,
     healthGoal,
     novaGroup: n['nova-group_100g'] != null ? Math.round(n['nova-group_100g']) : undefined,
     nutriscoreScore: product.nutriscore_score,

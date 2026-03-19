@@ -2,6 +2,7 @@ import { createEventStream } from 'h3'
 import { requireAuth } from '../utils/apiAuth'
 import { getAIProvider, extractProviderError } from '../utils/ai'
 import { createMCPSession, getMCPSession, purgeExpiredSessions } from '../utils/mcpSessions'
+import { calcNutritionScore } from '../utils/healthScore'
 import { db } from '../db'
 import { meals, mealItems, userGoals, weightEntries, userFavoriteProducts, products, recipes, recipeProducts } from '../db/schema'
 import { eq, sql, desc, and, inArray, ilike, or } from 'drizzle-orm'
@@ -303,6 +304,90 @@ const TOOLS = [
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: false,
+      openWorldHint: false
+    }
+  },
+  {
+    name: 'log_meal_direct',
+    description: 'Log a meal directly with known nutritional values — no AI analysis. Use this when you already have the exact nutrition data (e.g. from a package label, database, or prior knowledge).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        label: { type: 'string', description: 'Meal name or label (e.g. "Pasta bolognaise")' },
+        meal_category: {
+          type: 'string',
+          enum: ['breakfast', 'lunch', 'snack', 'dinner'],
+          description: 'Meal category (optional)'
+        },
+        date: { type: 'string', description: 'Date in YYYY-MM-DD format (defaults to today)' },
+        calories: { type: 'number', description: 'Total calories (kcal)' },
+        protein: { type: 'number', description: 'Total protein (g)' },
+        carbs: { type: 'number', description: 'Total carbohydrates (g)' },
+        fat: { type: 'number', description: 'Total fat (g)' },
+        fiber: { type: 'number', description: 'Total fiber (g, optional)' },
+        sugar: { type: 'number', description: 'Total sugar (g, optional)' },
+        saturated_fat: { type: 'number', description: 'Total saturated fat (g, optional)' },
+        salt: { type: 'number', description: 'Total salt (g, optional)' },
+        items: {
+          type: 'array',
+          description: 'Individual food items in the meal (optional)',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string', description: 'Item name' },
+              quantity: { type: 'string', description: 'Quantity text (e.g. "150g", "1 bowl")' },
+              calories: { type: 'number', description: 'Item calories (kcal)' },
+              protein: { type: 'number', description: 'Item protein (g)' },
+              carbs: { type: 'number', description: 'Item carbs (g)' },
+              fat: { type: 'number', description: 'Item fat (g)' },
+              fiber: { type: 'number', description: 'Item fiber (g, optional)' },
+              sugar: { type: 'number', description: 'Item sugar (g, optional)' },
+              saturated_fat: { type: 'number', description: 'Item saturated fat (g, optional)' },
+              salt: { type: 'number', description: 'Item salt (g, optional)' }
+            },
+            required: ['name', 'calories', 'protein', 'carbs', 'fat']
+          }
+        }
+      },
+      required: ['calories', 'protein', 'carbs', 'fat']
+    },
+    annotations: {
+      title: 'Log Meal (Direct)',
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false
+    }
+  },
+  {
+    name: 'edit_meal',
+    description: 'Edit an existing meal in the journal. Update its nutritional values, category, or label. Only provided fields are updated. Use get_today or get_history to find meal IDs.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        meal_id: { type: 'string', description: 'UUID of the meal to edit' },
+        meal_category: {
+          type: 'string',
+          enum: ['breakfast', 'lunch', 'snack', 'dinner'],
+          description: 'New meal category (optional)'
+        },
+        label: { type: 'string', description: 'New meal label/name (optional)' },
+        calories: { type: 'number', description: 'Updated total calories (kcal, optional)' },
+        protein: { type: 'number', description: 'Updated total protein (g, optional)' },
+        carbs: { type: 'number', description: 'Updated total carbs (g, optional)' },
+        fat: { type: 'number', description: 'Updated total fat (g, optional)' },
+        fiber: { type: 'number', description: 'Updated total fiber (g, optional)' },
+        sugar: { type: 'number', description: 'Updated total sugar (g, optional)' },
+        saturated_fat: { type: 'number', description: 'Updated total saturated fat (g, optional)' },
+        salt: { type: 'number', description: 'Updated total salt (g, optional)' }
+      },
+      required: ['meal_id']
+    },
+    annotations: {
+      title: 'Edit a Meal',
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
       openWorldHint: false
     }
   }
@@ -919,6 +1004,160 @@ async function executeTool(name: string, args: Record<string, unknown>, userId: 
       protein: portion.protein,
       carbs: portion.carbs,
       fat: portion.fat
+    }
+  }
+
+  if (name === 'log_meal_direct') {
+    const calories = Number(args.calories)
+    const protein = Number(args.protein)
+    const carbs = Number(args.carbs)
+    const fat = Number(args.fat)
+    if (isNaN(calories) || isNaN(protein) || isNaN(carbs) || isNaN(fat)) {
+      throw new Error('calories, protein, carbs and fat are required numeric fields')
+    }
+    const fiber = args.fiber != null ? Number(args.fiber) : 0
+    const sugar = args.sugar != null ? Number(args.sugar) : 0
+    const saturatedFat = args.saturated_fat != null ? Number(args.saturated_fat) : 0
+    const salt = args.salt != null ? Number(args.salt) : 0
+    const label = args.label ? String(args.label) : null
+    const validCategories = ['breakfast', 'lunch', 'snack', 'dinner']
+    const mealCategory = validCategories.includes(String(args.meal_category ?? ''))
+      ? String(args.meal_category) as 'breakfast' | 'lunch' | 'snack' | 'dinner'
+      : null
+    const dateStr = args.date && /^\d{4}-\d{2}-\d{2}$/.test(String(args.date)) ? String(args.date) : today
+
+    const goalsForDirect = await db.query.userGoals.findFirst({ where: eq(userGoals.userId, userId) })
+    const healthGoalForDirect = goalsForDirect?.healthGoal ?? 'balance'
+    const { score: healthScore, label: healthLabel } = calcNutritionScore(
+      { calories, protein, carbs, fat, fiber, sugar, saturatedFat, salt },
+      healthGoalForDirect
+    )
+
+    const [meal] = await db.insert(meals).values({
+      userId,
+      date: dateStr,
+      type: 'search',
+      mealCategory,
+      label,
+      totalCalories: calories,
+      totalProtein: protein,
+      totalCarbs: carbs,
+      totalFat: fat,
+      totalFiber: fiber,
+      totalSugar: sugar,
+      totalSaturatedFat: saturatedFat,
+      totalSalt: salt,
+      healthScore,
+      healthLabel,
+      confidence: 1
+    }).returning()
+    if (!meal) throw new Error('Failed to log meal')
+
+    const items = args.items as Array<{
+      name: string, quantity?: string, calories: number, protein: number, carbs: number, fat: number,
+      fiber?: number, sugar?: number, saturated_fat?: number, salt?: number
+    }> | undefined
+    if (items?.length) {
+      await db.insert(mealItems).values(
+        items.map(item => ({
+          mealId: meal.id,
+          name: item.name,
+          quantityText: item.quantity ?? null,
+          quantityGrams: item.quantity?.match(/(\d+(?:\.\d+)?)\s*g/i)?.[1]
+            ? parseFloat(item.quantity.match(/(\d+(?:\.\d+)?)\s*g/i)![1])
+            : null,
+          calories: item.calories,
+          protein: item.protein,
+          carbs: item.carbs,
+          fat: item.fat,
+          fiber: item.fiber ?? null,
+          sugar: item.sugar ?? null,
+          saturatedFat: item.saturated_fat ?? null,
+          salt: item.salt ?? null
+        }))
+      )
+    }
+
+    return {
+      logged: true,
+      meal_id: meal.id,
+      date: dateStr,
+      healthScore,
+      healthLabel,
+      summary: `${Math.round(calories)} kcal · P${Math.round(protein)}g · G${Math.round(carbs)}g · L${Math.round(fat)}g`
+    }
+  }
+
+  if (name === 'edit_meal') {
+    const mealId = String(args.meal_id ?? '')
+    if (!mealId) throw new Error('meal_id is required')
+
+    const update: Record<string, unknown> = {}
+    if (args.calories !== undefined) update.totalCalories = Number(args.calories)
+    if (args.protein !== undefined) update.totalProtein = Number(args.protein)
+    if (args.carbs !== undefined) update.totalCarbs = Number(args.carbs)
+    if (args.fat !== undefined) update.totalFat = Number(args.fat)
+    if (args.fiber !== undefined) update.totalFiber = Number(args.fiber)
+    if (args.sugar !== undefined) update.totalSugar = Number(args.sugar)
+    if (args.saturated_fat !== undefined) update.totalSaturatedFat = Number(args.saturated_fat)
+    if (args.salt !== undefined) update.totalSalt = Number(args.salt)
+    if (args.label !== undefined) update.label = args.label ? String(args.label) : null
+    const validCats = ['breakfast', 'lunch', 'snack', 'dinner']
+    if (args.meal_category !== undefined) {
+      update.mealCategory = validCats.includes(String(args.meal_category))
+        ? String(args.meal_category)
+        : null
+    }
+
+    if (!Object.keys(update).length) throw new Error('Provide at least one field to update')
+
+    // Recalculate health score if any nutrition value changed
+    const nutritionChanged = ['calories', 'protein', 'carbs', 'fat', 'fiber', 'sugar', 'saturated_fat', 'salt']
+      .some(k => args[k] !== undefined)
+    if (nutritionChanged) {
+      const existing = await db.query.meals.findFirst({
+        where: and(eq(meals.id, mealId), eq(meals.userId, userId))
+      })
+      if (!existing) throw new Error('Meal not found or does not belong to you')
+      const goalsForEdit = await db.query.userGoals.findFirst({ where: eq(userGoals.userId, userId) })
+      const healthGoalForEdit = goalsForEdit?.healthGoal ?? 'balance'
+      const { score: healthScore, label: healthLabel } = calcNutritionScore({
+        calories: Number(update.totalCalories ?? existing.totalCalories),
+        protein: Number(update.totalProtein ?? existing.totalProtein),
+        carbs: Number(update.totalCarbs ?? existing.totalCarbs),
+        fat: Number(update.totalFat ?? existing.totalFat),
+        fiber: Number(update.totalFiber ?? existing.totalFiber ?? 0),
+        sugar: Number(update.totalSugar ?? existing.totalSugar ?? 0),
+        saturatedFat: Number(update.totalSaturatedFat ?? existing.totalSaturatedFat ?? 0),
+        salt: Number(update.totalSalt ?? existing.totalSalt ?? 0)
+      }, healthGoalForEdit)
+      update.healthScore = healthScore
+      update.healthLabel = healthLabel
+    }
+
+    const [updated] = await db.update(meals)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .set(update as any)
+      .where(and(eq(meals.id, mealId), eq(meals.userId, userId)))
+      .returning()
+    if (!updated) throw new Error('Meal not found or does not belong to you')
+
+    return {
+      updated: true,
+      meal_id: mealId,
+      meal: {
+        id: updated.id,
+        date: updated.date,
+        mealCategory: updated.mealCategory,
+        label: updated.label,
+        calories: Math.round(updated.totalCalories),
+        protein: Math.round(updated.totalProtein * 10) / 10,
+        carbs: Math.round(updated.totalCarbs * 10) / 10,
+        fat: Math.round(updated.totalFat * 10) / 10,
+        fiber: Math.round((updated.totalFiber ?? 0) * 10) / 10,
+        healthScore: updated.healthScore,
+        healthLabel: updated.healthLabel
+      }
     }
   }
 
