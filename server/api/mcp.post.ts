@@ -3,6 +3,7 @@ import { requireAuth } from '../utils/apiAuth'
 import { getAIProvider, extractProviderError } from '../utils/ai'
 import { createMCPSession, getMCPSession, purgeExpiredSessions } from '../utils/mcpSessions'
 import { calcNutritionScore } from '../utils/healthScore'
+import { upsertProduct } from '../utils/products'
 import { db } from '../db'
 import { meals, mealItems, userGoals, weightEntries, userFavoriteProducts, products, recipes, recipeProducts } from '../db/schema'
 import { eq, sql, desc, and, inArray, ilike, or } from 'drizzle-orm'
@@ -254,7 +255,7 @@ const TOOLS = [
   },
   {
     name: 'create_recipe',
-    description: 'Create a new recipe from a list of product ingredients. Each ingredient references a product by its ID and specifies a quantity in grams. Use search_products first to find product IDs.',
+    description: 'Create a new recipe from a list of ingredients. Each ingredient can reference an existing product by ID, or provide inline nutrition data (per 100g) to create a new product automatically.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -262,14 +263,23 @@ const TOOLS = [
         description: { type: 'string', description: 'Optional recipe description' },
         ingredients: {
           type: 'array',
-          description: 'List of ingredients with product IDs and quantities',
+          description: 'List of ingredients — provide product_id for existing products, or name+nutrition for new ones',
           items: {
             type: 'object',
             properties: {
-              product_id: { type: 'string', description: 'UUID of the product (use search_products to find)' },
-              quantity_grams: { type: 'number', description: 'Quantity in grams' }
+              product_id: { type: 'string', description: 'UUID of an existing product (use search_products to find). Omit if providing inline nutrition.' },
+              quantity_grams: { type: 'number', description: 'Quantity in grams' },
+              name: { type: 'string', description: 'Product name (required if no product_id)' },
+              calories: { type: 'number', description: 'Calories per 100g (required if no product_id)' },
+              protein: { type: 'number', description: 'Protein per 100g (required if no product_id)' },
+              carbs: { type: 'number', description: 'Carbs per 100g (required if no product_id)' },
+              fat: { type: 'number', description: 'Fat per 100g (required if no product_id)' },
+              fiber: { type: 'number', description: 'Fiber per 100g (optional)' },
+              sugar: { type: 'number', description: 'Sugar per 100g (optional)' },
+              saturated_fat: { type: 'number', description: 'Saturated fat per 100g (optional)' },
+              salt: { type: 'number', description: 'Salt per 100g (optional)' }
             },
-            required: ['product_id', 'quantity_grams']
+            required: ['quantity_grams']
           }
         }
       },
@@ -280,6 +290,64 @@ const TOOLS = [
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: false,
+      openWorldHint: false
+    }
+  },
+  {
+    name: 'edit_recipe',
+    description: 'Edit an existing recipe: update its name/description, add new ingredients (by product ID or inline nutrition), remove ingredients, or update ingredient quantities. Use get_recipes to find recipe and ingredient IDs.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        recipe_id: { type: 'string', description: 'UUID of the recipe to edit' },
+        name: { type: 'string', description: 'New recipe name (optional)' },
+        description: { type: 'string', description: 'New recipe description (optional, set to empty string to clear)' },
+        add_ingredients: {
+          type: 'array',
+          description: 'Ingredients to add — provide product_id for existing products, or name+nutrition for new ones',
+          items: {
+            type: 'object',
+            properties: {
+              product_id: { type: 'string', description: 'UUID of an existing product (omit if providing inline nutrition)' },
+              quantity_grams: { type: 'number', description: 'Quantity in grams' },
+              name: { type: 'string', description: 'Product name (required if no product_id)' },
+              calories: { type: 'number', description: 'Calories per 100g (required if no product_id)' },
+              protein: { type: 'number', description: 'Protein per 100g (required if no product_id)' },
+              carbs: { type: 'number', description: 'Carbs per 100g (required if no product_id)' },
+              fat: { type: 'number', description: 'Fat per 100g (required if no product_id)' },
+              fiber: { type: 'number', description: 'Fiber per 100g (optional)' },
+              sugar: { type: 'number', description: 'Sugar per 100g (optional)' },
+              saturated_fat: { type: 'number', description: 'Saturated fat per 100g (optional)' },
+              salt: { type: 'number', description: 'Salt per 100g (optional)' }
+            },
+            required: ['quantity_grams']
+          }
+        },
+        remove_product_ids: {
+          type: 'array',
+          description: 'Product IDs to remove from the recipe',
+          items: { type: 'string' }
+        },
+        update_ingredients: {
+          type: 'array',
+          description: 'Update quantity of existing ingredients by product ID',
+          items: {
+            type: 'object',
+            properties: {
+              product_id: { type: 'string', description: 'Product ID of the ingredient to update' },
+              quantity_grams: { type: 'number', description: 'New quantity in grams' }
+            },
+            required: ['product_id', 'quantity_grams']
+          }
+        }
+      },
+      required: ['recipe_id']
+    },
+    annotations: {
+      title: 'Edit Recipe',
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
       openWorldHint: false
     }
   },
@@ -398,6 +466,63 @@ function getBaseUrl(event: Parameters<typeof getHeader>[0]): string {
   const proto = getHeader(event, 'x-forwarded-proto')
     ?? (host.startsWith('localhost') || host.startsWith('127.') ? 'http' : 'https')
   return `${proto}://${host}`
+}
+
+interface IngredientInput {
+  product_id?: string
+  quantity_grams: number
+  name?: string
+  calories?: number
+  protein?: number
+  carbs?: number
+  fat?: number
+  fiber?: number
+  sugar?: number
+  saturated_fat?: number
+  salt?: number
+}
+
+/** Resolve ingredient inputs to product IDs, creating inline products as needed */
+async function resolveIngredients(ingredients: IngredientInput[], userId: string): Promise<{ productId: string, quantityGrams: number }[]> {
+  const resolved: { productId: string, quantityGrams: number }[] = []
+
+  for (const ing of ingredients) {
+    if (ing.product_id) {
+      resolved.push({ productId: ing.product_id, quantityGrams: Number(ing.quantity_grams) })
+    } else {
+      // Inline product creation
+      if (!ing.name) throw new Error('Inline ingredient requires a name')
+      if (ing.calories == null || ing.protein == null || ing.carbs == null || ing.fat == null) {
+        throw new Error(`Inline ingredient "${ing.name}" requires calories, protein, carbs, and fat (per 100g)`)
+      }
+      const productId = await upsertProduct({
+        userId,
+        name: ing.name,
+        source: 'recipe',
+        calories: Number(ing.calories),
+        protein: Number(ing.protein),
+        carbs: Number(ing.carbs),
+        fat: Number(ing.fat),
+        fiber: ing.fiber != null ? Number(ing.fiber) : null,
+        sugar: ing.sugar != null ? Number(ing.sugar) : null,
+        saturatedFat: ing.saturated_fat != null ? Number(ing.saturated_fat) : null,
+        salt: ing.salt != null ? Number(ing.salt) : null
+      })
+      resolved.push({ productId, quantityGrams: Number(ing.quantity_grams) })
+    }
+  }
+
+  // Validate all product IDs belong to user
+  const productIds = resolved.map(r => r.productId)
+  const found = await db
+    .select({ id: products.id })
+    .from(products)
+    .where(and(eq(products.userId, userId), inArray(products.id, productIds)))
+  const foundIds = new Set(found.map(p => p.id))
+  const missing = productIds.filter(id => !foundIds.has(id))
+  if (missing.length) throw new Error(`Products not found: ${missing.join(', ')}. Use search_products to find valid product IDs.`)
+
+  return resolved
 }
 
 async function executeTool(name: string, args: Record<string, unknown>, userId: string): Promise<unknown> {
@@ -862,18 +987,10 @@ async function executeTool(name: string, args: Record<string, unknown>, userId: 
   if (name === 'create_recipe') {
     const recipeName = String(args.name ?? '').trim()
     if (!recipeName) throw new Error('name is required')
-    const ingredients = args.ingredients as Array<{ product_id: string, quantity_grams: number }> | undefined
+    const ingredients = args.ingredients as IngredientInput[] | undefined
     if (!ingredients?.length) throw new Error('At least one ingredient is required')
 
-    // Validate all product IDs belong to the user
-    const productIds = ingredients.map(i => String(i.product_id))
-    const foundProducts = await db
-      .select({ id: products.id, name: products.name })
-      .from(products)
-      .where(and(eq(products.userId, userId), inArray(products.id, productIds)))
-    const foundIds = new Set(foundProducts.map(p => p.id))
-    const missing = productIds.filter(id => !foundIds.has(id))
-    if (missing.length) throw new Error(`Products not found: ${missing.join(', ')}. Use search_products to find valid product IDs.`)
+    const resolved = await resolveIngredients(ingredients, userId)
 
     const [recipe] = await db.insert(recipes).values({
       userId,
@@ -883,10 +1000,10 @@ async function executeTool(name: string, args: Record<string, unknown>, userId: 
     if (!recipe) throw new Error('Failed to create recipe')
 
     await db.insert(recipeProducts).values(
-      ingredients.map((ing, idx) => ({
+      resolved.map((ing, idx) => ({
         recipeId: recipe.id,
-        productId: String(ing.product_id),
-        quantityGrams: Number(ing.quantity_grams),
+        productId: ing.productId,
+        quantityGrams: ing.quantityGrams,
         order: idx
       }))
     )
@@ -895,7 +1012,7 @@ async function executeTool(name: string, args: Record<string, unknown>, userId: 
       created: true,
       recipe_id: recipe.id,
       name: recipeName,
-      ingredient_count: ingredients.length
+      ingredient_count: resolved.length
     }
   }
 
@@ -1158,6 +1275,87 @@ async function executeTool(name: string, args: Record<string, unknown>, userId: 
         healthScore: updated.healthScore,
         healthLabel: updated.healthLabel
       }
+    }
+  }
+
+  if (name === 'edit_recipe') {
+    const recipeId = String(args.recipe_id ?? '')
+    if (!recipeId) throw new Error('recipe_id is required')
+
+    const recipe = await db.query.recipes.findFirst({
+      where: and(eq(recipes.id, recipeId), eq(recipes.userId, userId))
+    })
+    if (!recipe) throw new Error('Recipe not found or does not belong to you')
+
+    // Update name / description
+    const recipeUpdate: Record<string, unknown> = {}
+    if (args.name !== undefined) recipeUpdate.name = String(args.name).trim()
+    if (args.description !== undefined) recipeUpdate.description = args.description ? String(args.description) : null
+    if (Object.keys(recipeUpdate).length) {
+      await db.update(recipes).set(recipeUpdate as any).where(eq(recipes.id, recipeId))
+    }
+
+    // Remove ingredients
+    const removeIds = args.remove_product_ids as string[] | undefined
+    if (removeIds?.length) {
+      await db.delete(recipeProducts)
+        .where(and(eq(recipeProducts.recipeId, recipeId), inArray(recipeProducts.productId, removeIds)))
+    }
+
+    // Update ingredient quantities
+    const updateIngs = args.update_ingredients as Array<{ product_id: string, quantity_grams: number }> | undefined
+    if (updateIngs?.length) {
+      for (const upd of updateIngs) {
+        await db.update(recipeProducts)
+          .set({ quantityGrams: Number(upd.quantity_grams) })
+          .where(and(eq(recipeProducts.recipeId, recipeId), eq(recipeProducts.productId, String(upd.product_id))))
+      }
+    }
+
+    // Add new ingredients
+    const addIngs = args.add_ingredients as IngredientInput[] | undefined
+    if (addIngs?.length) {
+      const resolved = await resolveIngredients(addIngs, userId)
+      // Get current max order
+      const existing = await db.select({ order: recipeProducts.order })
+        .from(recipeProducts)
+        .where(eq(recipeProducts.recipeId, recipeId))
+      const maxOrder = existing.reduce((max, rp) => Math.max(max, rp.order), -1)
+      await db.insert(recipeProducts).values(
+        resolved.map((ing, idx) => ({
+          recipeId,
+          productId: ing.productId,
+          quantityGrams: ing.quantityGrams,
+          order: maxOrder + 1 + idx
+        }))
+      )
+    }
+
+    // Fetch updated recipe with ingredients
+    const updatedRps = await db
+      .select({
+        productId: recipeProducts.productId,
+        quantityGrams: recipeProducts.quantityGrams,
+        order: recipeProducts.order,
+        productName: products.name
+      })
+      .from(recipeProducts)
+      .innerJoin(products, eq(recipeProducts.productId, products.id))
+      .where(eq(recipeProducts.recipeId, recipeId))
+
+    const updatedRecipe = await db.query.recipes.findFirst({ where: eq(recipes.id, recipeId) })
+
+    return {
+      updated: true,
+      recipe_id: recipeId,
+      name: updatedRecipe?.name,
+      description: updatedRecipe?.description,
+      ingredient_count: updatedRps.length,
+      ingredients: updatedRps.sort((a, b) => a.order - b.order).map(rp => ({
+        productId: rp.productId,
+        name: rp.productName,
+        quantityGrams: rp.quantityGrams
+      }))
     }
   }
 
