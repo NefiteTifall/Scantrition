@@ -4,6 +4,7 @@
 
 Une alternative open source et gratuite à Foodvisor / MyFitnessPal. Trois façons d'ajouter un repas : décrire ce qu'on mange en texte, prendre une photo, ou scanner un code-barres. Un modèle IA analyse et retourne les macronutriments estimés. Tout est self-hostable, privacy-first, et extensible.
 
+OTI4NzQ3MzEwNzgxOTYwMTky.GvYz1P.lcW-zXrW7zu6JaZuwQ9TaYCCOu9_QVCc_HiXbA
 ---
 
 ## Stack
